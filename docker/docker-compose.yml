@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # Backend API szerver
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: intellivend-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DB_HOST=${DB_HOST:-mysql}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME:-intellivend}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - PORT=3000
+      - API_SECRET=${API_SECRET}
+      - ESP32_API_KEY=${ESP32_API_KEY}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - intellivend-network
+    volumes:
+      - ../backend:/app
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend webszerver
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: intellivend-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - intellivend-network
+    volumes:
+      - ../frontend:/usr/share/nginx/html:ro
+
+  # MySQL adatbázis (ha nincs külön MySQL szervered)
+  mysql:
+    image: mysql:8.0
+    container_name: intellivend-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-rootpassword}
+      - MYSQL_DATABASE=${DB_NAME:-intellivend}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ../database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    networks:
+      - intellivend-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # phpMyAdmin (opcionális, admin célokra)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: intellivend-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - PMA_USER=${DB_USER}
+      - PMA_PASSWORD=${DB_PASSWORD}
+    depends_on:
+      - mysql
+    networks:
+      - intellivend-network
+
+  # MQTT Broker (opcionális, ESP32 kommunikációhoz)
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: intellivend-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - intellivend-network
+
+networks:
+  intellivend-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local

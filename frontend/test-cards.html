@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Drink Card Test</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { padding: 20px; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; border-left: 4px solid #333; }
+    </style>
+</head>
+<body>
+    <h1>Italok Renderelési Teszt</h1>
+    
+    <div class="debug">
+        <strong>State:</strong>
+        <div id="state"></div>
+    </div>
+    
+    <div id="drinks-grid" class="drinks-grid"></div>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script>
+        const currentFilters = {
+            available_only: 'true',
+            category: '',
+            is_alcoholic: ''
+        };
+        
+        async function loadDrinks() {
+            const stateDiv = document.getElementById('state');
+            
+            try {
+                stateDiv.innerHTML = `<p>Betöltés... Filterek: ${JSON.stringify(currentFilters)}</p>`;
+                
+                console.log('API.getRecipes hívása filterekkel:', currentFilters);
+                const drinks = await API.getRecipes(currentFilters);
+                
+                console.log('Válasz érkezett:', drinks);
+                stateDiv.innerHTML = `
+                    <p>✓ API válasz érkezett: ${drinks.length} recept</p>
+                    <p>Filterek: ${JSON.stringify(currentFilters)}</p>
+                    <p>Receptek: ${drinks.map(d => d.name).join(', ')}</p>
+                `;
+                
+                console.log('UI.renderDrinks hívása...');
+                UI.renderDrinks(drinks);
+                
+            } catch (error) {
+                console.error('Hiba:', error);
+                stateDiv.innerHTML = `<p style="color: red;">✗ Hiba: ${error.message}</p>`;
+            }
+        }
+        
+        window.onload = loadDrinks;
+    </script>
+</body>
+</html>

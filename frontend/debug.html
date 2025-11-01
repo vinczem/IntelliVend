@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>IntelliVend Debug</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        .section { margin: 20px 0; padding: 15px; background: #252526; border-radius: 5px; }
+        .success { color: #4EC9B0; }
+        .error { color: #F48771; }
+        pre { background: #1e1e1e; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { background: #0E639C; color: white; border: none; padding: 8px 16px; margin: 5px; cursor: pointer; border-radius: 3px; }
+        button:hover { background: #1177BB; }
+    </style>
+</head>
+<body>
+    <h1>🔍 IntelliVend Frontend Debug</h1>
+    
+    <div class="section">
+        <h2>API Konfiguráció</h2>
+        <pre id="config"></pre>
+    </div>
+    
+    <div class="section">
+        <h2>Tesztek</h2>
+        <button onclick="testAPI()">Test API Connection</button>
+        <button onclick="testRecipes()">Test Recipes Endpoint</button>
+        <button onclick="testFiltered()">Test Filtered Recipes (available_only=true)</button>
+    </div>
+    
+    <div class="section">
+        <h2>Eredmények</h2>
+        <div id="results"></div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+        document.getElementById('config').textContent = JSON.stringify(API_CONFIG, null, 2);
+        
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            document.getElementById('results').appendChild(div);
+        }
+        
+        async function testAPI() {
+            try {
+                log('Tesztelés: GET /health');
+                const response = await fetch('http://localhost:3000/health');
+                const data = await response.json();
+                log(`✓ Backend válasz: ${JSON.stringify(data)}`, 'success');
+            } catch (error) {
+                log(`✗ Hiba: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+        
+        async function testRecipes() {
+            try {
+                log('Tesztelés: GET /api/recipes');
+                const response = await fetch(`${API_CONFIG.baseURL}/recipes`);
+                const data = await response.json();
+                log(`✓ ${data.length} recept érkezett`, 'success');
+                log(`Receptek: ${data.map(r => r.name).join(', ')}`);
+                
+                const pre = document.createElement('pre');
+                pre.textContent = JSON.stringify(data.slice(0, 2), null, 2);
+                document.getElementById('results').appendChild(pre);
+            } catch (error) {
+                log(`✗ Hiba: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+        
+        async function testFiltered() {
+            try {
+                log('Tesztelés: GET /api/recipes?available_only=true');
+                const url = `${API_CONFIG.baseURL}/recipes?available_only=true&category=&is_alcoholic=`;
+                log(`URL: ${url}`);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                log(`✓ ${data.length} elérhető recept`, 'success');
+                
+                data.forEach((r, i) => {
+                    log(`${i+1}. ${r.name} (${r.category}) - alcoholic: ${r.is_alcoholic}`);
+                });
+                
+                const pre = document.createElement('pre');
+                pre.textContent = JSON.stringify(data, null, 2);
+                document.getElementById('results').appendChild(pre);
+            } catch (error) {
+                log(`✗ Hiba: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+        
+        // Auto-run on load
+        window.onload = () => {
+            testFiltered();
+        };
+    </script>
+</body>
+</html>

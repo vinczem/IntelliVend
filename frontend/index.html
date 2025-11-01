@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntelliVend - Italautomata Rendszer</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-content">
+                <div>
+                    <h1>IntelliVend</h1>
+                    <p class="subtitle">Intelligent Vending Machine - az Intelligens Italautomata Rendszer</p>
+                </div>
+                <button id="theme-toggle" class="theme-toggle" title="Sötét/Világos mód">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav>
+            <button class="nav-btn active" data-view="drinks">Italok</button>
+            <button class="nav-btn" data-view="admin">Admin</button>
+            <button class="nav-btn" data-view="inventory">Készlet</button>
+            <button class="nav-btn" data-view="stats">Statisztika</button>
+        </nav>
+
+        <!-- Main Content -->
+        <main id="main-content">
+            <!-- Drinks View (Default) -->
+            <div id="drinks-view" class="view active">
+                <h2>Válassz egy italt!</h2>
+                
+                <!-- Filters -->
+                <div class="filters">
+                    <label>
+                        <input type="checkbox" id="filter-available" checked>
+                        Csak elérhető italok
+                    </label>
+                    <select id="filter-category">
+                        <option value="">Minden kategória</option>
+                        <option value="cocktail">Koktélok</option>
+                        <option value="shot">Shotok</option>
+                        <option value="long-drink">Long drink</option>
+                        <option value="mocktail">Alkoholmentes</option>
+                    </select>
+                    <select id="filter-alcoholic">
+                        <option value="">Alkoholos/Alkoholmentes</option>
+                        <option value="true">Csak alkoholos</option>
+                        <option value="false">Csak alkoholmentes</option>
+                    </select>
+                </div>
+
+                <!-- Drinks Grid -->
+                <div id="drinks-grid" class="drinks-grid">
+                    <!-- Dynamically loaded -->
+                </div>
+            </div>
+
+            <!-- Admin View -->
+            <div id="admin-view" class="view">
+                <h2>panel</h2>
+                
+                <div class="admin-tabs">
+                    <button class="tab-btn active" data-tab="ingredients">Alapanyagok</button>
+                    <button class="tab-btn" data-tab="pumps">Pumpák</button>
+                    <button class="tab-btn" data-tab="recipes">Receptek</button>
+                </div>
+
+                <div id="admin-content">
+                    <!-- Dynamically loaded based on tab -->
+                </div>
+            </div>
+
+            <!-- Inventory View -->
+            <div id="inventory-view" class="view">
+                <div class="inventory-header">
+                    <h2>Készletkezelés</h2>
+                    <button id="btn-bulk-refill" class="btn-primary">🔄 Összes újratöltése</button>
+                </div>
+                <div id="inventory-list">
+                    <!-- Dynamically loaded -->
+                </div>
+            </div>
+
+            <!-- Stats View -->
+            <div id="stats-view" class="view">
+                <h2>Statisztikák és elemzések</h2>
+                
+                <!-- Summary Cards -->
+                <div id="stats-cards" class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-icon">🍹</div>
+                        <div class="stat-value" id="stat-total-drinks">-</div>
+                        <div class="stat-label">Összes ital</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💧</div>
+                        <div class="stat-value" id="stat-total-volume">-</div>
+                        <div class="stat-label">Összes mennyiség (L)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⚠️</div>
+                        <div class="stat-value" id="stat-active-alerts">-</div>
+                        <div class="stat-label">Aktív riasztások</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📦</div>
+                        <div class="stat-value" id="stat-low-stock">-</div>
+                        <div class="stat-label">Alacsony készlet</div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="stats-charts">
+                    <div class="chart-container">
+                        <h3>Napi fogyasztás (utolsó 7 nap)</h3>
+                        <canvas id="dailyConsumptionChart"></canvas>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <h3>Top 10 legnépszerűbb ital</h3>
+                        <canvas id="popularDrinksChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Modal for drink dispensing -->
+        <div id="dispense-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2 id="modal-drink-name"></h2>
+                <div id="modal-drink-details"></div>
+                <div id="dispense-progress" class="hidden">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <p id="dispense-status">Készítés folyamatban...</p>
+                </div>
+                <button id="btn-dispense" class="btn-primary">Kérek egy ilyet!</button>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div id="alerts-container"></div>
+
+        <!-- Footer -->
+        <footer>
+            <p class="footer-copyright">
+                © 2025 IntelliVend Project - Crafted by <strong>Zoltan Nagy</strong> & <strong>Mihaly Vincze</strong>
+            </p>
+            <p class="footer-authors">
+            </p>
+        </footer>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</body>
+</html>
