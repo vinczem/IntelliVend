@@ -11,11 +11,16 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeNavigation();
     initializeFilters();
     initializeModal();
+    initializeAlertPanel();
     loadDrinks();
     checkAlerts();
+    loadAlertPanel();
     
     // Refresh alerts every 30 seconds
-    setInterval(checkAlerts, 30000);
+    setInterval(() => {
+        checkAlerts();
+        loadAlertPanel();
+    }, 30000);
 });
 
 function initializeTheme() {
@@ -184,5 +189,94 @@ async function checkAlerts() {
         }
     } catch (error) {
         console.error('Error checking alerts:', error);
+    }
+}
+
+// Alert Panel Functions
+function initializeAlertPanel() {
+    const alertToggle = document.getElementById('alert-toggle');
+    const alertPanel = document.getElementById('alert-panel');
+    const alertPanelClose = document.getElementById('alert-panel-close');
+    
+    // Toggle panel on icon click
+    alertToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        alertPanel.classList.toggle('hidden');
+        
+        // Load alerts when opening
+        if (!alertPanel.classList.contains('hidden')) {
+            loadAlertPanel();
+        }
+    });
+    
+    // Close panel on close button click
+    alertPanelClose.addEventListener('click', () => {
+        alertPanel.classList.add('hidden');
+    });
+    
+    // Close panel when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!alertPanel.contains(e.target) && !alertToggle.contains(e.target)) {
+            alertPanel.classList.add('hidden');
+        }
+    });
+}
+
+async function loadAlertPanel() {
+    try {
+        const alerts = await API.getAlerts({ is_resolved: 'false' });
+        const alertBadge = document.getElementById('alert-badge');
+        const alertPanelContent = document.getElementById('alert-panel-content');
+        
+        // Update badge
+        if (alerts.length > 0) {
+            alertBadge.textContent = alerts.length;
+            alertBadge.classList.remove('hidden');
+        } else {
+            alertBadge.classList.add('hidden');
+        }
+        
+        // Render alerts
+        if (alerts.length === 0) {
+            alertPanelContent.innerHTML = `
+                <div class="alert-panel-empty">
+                    <div class="alert-panel-empty-icon">✅</div>
+                    <div class="alert-panel-empty-text">Nincsenek aktív riasztások</div>
+                </div>
+            `;
+        } else {
+            alertPanelContent.innerHTML = alerts.map(alert => `
+                <div class="alert-card ${alert.severity}">
+                    <div class="alert-card-header">
+                        <span class="alert-card-severity ${alert.severity}">
+                            ${alert.severity === 'critical' ? '🔴 Kritikus' : '⚠️ Figyelmeztetés'}
+                        </span>
+                    </div>
+                    <div class="alert-card-message">${alert.message}</div>
+                    <div class="alert-card-time">
+                        ${new Date(alert.created_at).toLocaleString('hu-HU')}
+                    </div>
+                    <div class="alert-card-actions">
+                        <button class="alert-dismiss-btn" onclick="dismissAlert(${alert.id})">
+                            Elutasítás
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading alert panel:', error);
+        UI.showAlert('Hiba a riasztások betöltése során', 'error');
+    }
+}
+
+async function dismissAlert(alertId) {
+    try {
+        await API.resolveAlert(alertId);
+        UI.showAlert('Riasztás elutasítva', 'success');
+        loadAlertPanel(); // Reload panel
+    } catch (error) {
+        console.error('Error dismissing alert:', error);
+        UI.showAlert('Hiba a riasztás elutasítása során', 'error');
     }
 }

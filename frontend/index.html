@@ -15,9 +15,26 @@
                     <h1>IntelliVend</h1>
                     <p class="subtitle">Intelligent Vending Machine - az Intelligens Italautomata Rendszer</p>
                 </div>
-                <button id="theme-toggle" class="theme-toggle" title="Sötét/Világos mód">
-                    <span class="theme-icon">🌙</span>
-                </button>
+                <div class="header-actions">
+                    <button id="alert-toggle" class="alert-toggle" title="Riasztások">
+                        <span class="alert-icon">🔔</span>
+                        <span id="alert-badge" class="alert-badge hidden">0</span>
+                    </button>
+                    <button id="theme-toggle" class="theme-toggle" title="Sötét/Világos mód">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Alert Panel (Hidden by default) -->
+            <div id="alert-panel" class="alert-panel hidden">
+                <div class="alert-panel-header">
+                    <h3>Riasztások</h3>
+                    <button id="alert-panel-close" class="alert-panel-close">×</button>
+                </div>
+                <div id="alert-panel-content" class="alert-panel-content">
+                    <!-- Dynamically loaded alerts -->
+                </div>
             </div>
         </header>
 
