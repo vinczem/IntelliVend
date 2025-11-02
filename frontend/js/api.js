@@ -1,9 +1,7 @@
 // API functions
 const API = {
     baseURL: API_CONFIG.baseURL,
-    staticURL: window.location.hostname === 'localhost' 
-        ? 'http://localhost:3000' 
-        : '',
+    staticURL: `http://${window.location.hostname}:3000`,
     
     async fetch(endpoint, options = {}) {
         const url = `${API_CONFIG.baseURL}${endpoint}`;
