@@ -313,6 +313,7 @@ function checkLowStock(ingredients) {
                   logger.warn(`Alert severity escalated: ${message}`);
                   
                   // Send email on severity escalation (warning → critical)
+                  // IMPORTANT: Skip throttling for escalations - always send!
                   if (newSeverity === 'critical') {
                     sendAlertEmail({
                       id: alertToUpdate.id,
@@ -322,7 +323,7 @@ function checkLowStock(ingredients) {
                       ingredient_name: inv.name,
                       pump_number: inv.pump_number,
                       created_at: new Date()
-                    });
+                    }, true); // skipThrottling = true for escalations
                   }
                 } else {
                   logger.info(`Alert updated: ${message}`);
@@ -377,55 +378,63 @@ function checkLowStock(ingredients) {
 }
 
 // Send alert email helper function
-async function sendAlertEmail(alert) {
+async function sendAlertEmail(alert, skipThrottling = false) {
   try {
     // Check if we already sent an email for this alert recently (within last hour)
-    const checkQuery = `
-      SELECT id FROM email_notifications
-      WHERE alert_id = ?
-        AND sent_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
-      LIMIT 1
-    `;
-    
-    db.query(checkQuery, [alert.id], async (err, results) => {
-      if (err || results.length > 0) {
-        // Skip if error or email already sent recently
-        if (results.length > 0) {
-          logger.info(`Email already sent for alert ${alert.id} within last hour, skipping`);
-        }
-        return;
-      }
-      
-      // Send appropriate email based on type
-      let emailResult;
-      if (alert.type === 'empty_bottle') {
-        emailResult = await emailService.sendEmptyBottleAlert(alert);
-      } else {
-        emailResult = await emailService.sendLowStockAlert(alert);
-      }
-      
-      // Log the email notification
-      const insertQuery = `
-        INSERT INTO email_notifications (alert_id, email_type, recipient_email, status, error_message)
-        VALUES (?, ?, ?, ?, ?)
+    // BUT skip this check for severity escalations (they are always important!)
+    if (!skipThrottling) {
+      const checkQuery = `
+        SELECT id FROM email_notifications
+        WHERE alert_id = ?
+          AND sent_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+        LIMIT 1
       `;
       
-      const emailType = alert.type === 'empty_bottle' ? 'empty_bottle' : 'low_stock';
-      const status = emailResult.success ? 'sent' : 'failed';
-      const errorMessage = emailResult.success ? null : emailResult.error;
-      
-      db.query(insertQuery, [
-        alert.id,
-        emailType,
-        process.env.ALERT_EMAIL,
-        status,
-        errorMessage
-      ], (err) => {
-        if (err) {
-          logger.error('Error logging email notification:', err);
-        }
+      const throttleCheck = await new Promise((resolve, reject) => {
+        db.query(checkQuery, [alert.id], (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
       });
+      
+      if (throttleCheck.length > 0) {
+        logger.info(`Email already sent for alert ${alert.id} within last hour, skipping`);
+        return;
+      }
+    } else {
+      logger.info(`Skipping throttle check for alert ${alert.id} (severity escalation)`);
+    }
+    
+    // Send appropriate email based on type
+    let emailResult;
+    if (alert.type === 'empty_bottle') {
+      emailResult = await emailService.sendEmptyBottleAlert(alert);
+    } else {
+      emailResult = await emailService.sendLowStockAlert(alert);
+    }
+    
+    // Log the email notification
+    const insertQuery = `
+      INSERT INTO email_notifications (alert_id, email_type, recipient_email, status, error_message)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+    
+    const emailType = alert.type === 'empty_bottle' ? 'empty_bottle' : 'low_stock';
+    const status = emailResult.success ? 'sent' : 'failed';
+    const errorMessage = emailResult.success ? null : emailResult.error;
+    
+    db.query(insertQuery, [
+      alert.id,
+      emailType,
+      process.env.ALERT_EMAIL,
+      status,
+      errorMessage
+    ], (err) => {
+      if (err) {
+        logger.error('Error logging email notification:', err);
+      }
     });
+    
   } catch (error) {
     logger.error('Error sending alert email:', error);
   }

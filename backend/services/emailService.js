@@ -349,7 +349,7 @@ class EmailService {
                 </div>
             </div>
             
-            <p><strong>⚠️ Azonnali művelet:</strong> A palack teljesen üres! Töltsd fel azonnal, hogy a rendszer továbbra is működhessen.</p>
+            <p><strong>⚠️ Azonnali művelet:</strong> A palack teljesen üres! Töltsd fel azonnal, hogy a rendszer továbbra is működhessen!</p>
             
             <center>
                 <a href="${process.env.FRONTEND_URL}" class="action-button">
