@@ -26,12 +26,38 @@ const UI = {
         const container = document.getElementById('alerts-container');
         const alert = document.createElement('div');
         alert.className = `alert alert-${type}`;
-        alert.textContent = message;
+        
+        // Icon mapping
+        const icons = {
+            info: 'ℹ️',
+            success: '✅',
+            warning: '⚠️',
+            error: '❌'
+        };
+        
+        // Build alert structure
+        alert.innerHTML = `
+            <div class="alert-icon">${icons[type] || icons.info}</div>
+            <div class="alert-content">${message}</div>
+            <button class="alert-close" aria-label="Close">×</button>
+            <div class="alert-progress"></div>
+        `;
+        
+        // Close button functionality
+        const closeBtn = alert.querySelector('.alert-close');
+        closeBtn.addEventListener('click', () => {
+            alert.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => alert.remove(), 300);
+        });
         
         container.appendChild(alert);
         
+        // Auto-dismiss after 5 seconds
         setTimeout(() => {
-            alert.remove();
+            if (alert.parentElement) {
+                alert.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => alert.remove(), 300);
+            }
         }, 5000);
     },
 
