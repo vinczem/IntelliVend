@@ -16,6 +16,12 @@
                     <p class="subtitle">Intelligent Vending Machine - az Intelligens Italautomata Rendszer</p>
                 </div>
                 <div class="header-actions">
+                    <div id="ws-status" class="status-indicator offline">
+                        <span class="status-dot status-offline"></span> Real-time: Connecting...
+                    </div>
+                    <div id="esp32-status" class="status-indicator offline">
+                        <span class="status-dot status-offline"></span> ESP32: Unknown
+                    </div>
                     <button id="alert-toggle" class="alert-toggle" title="Riasztások">
                         <span class="alert-icon">🔔</span>
                         <span id="alert-badge" class="alert-badge hidden">0</span>
@@ -190,6 +196,7 @@
 
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/websocket.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/main.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>

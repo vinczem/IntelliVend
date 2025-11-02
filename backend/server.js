@@ -3,11 +3,21 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const http = require('http');
+const { Server } = require('socket.io');
 const db = require('./config/database');
 const logger = require('./config/logger');
 const mqttClient = require('./config/mqtt');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+    methods: ['GET', 'POST']
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 
 // Initialize MQTT connection
@@ -88,11 +98,27 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  logger.info(`WebSocket client connected: ${socket.id}`);
+  
+  socket.on('disconnect', () => {
+    logger.info(`WebSocket client disconnected: ${socket.id}`);
+  });
+});
+
+// Make io available to routes via app.locals
+app.locals.io = io;
+
+// Pass io to MQTT client for broadcasting
+mqttClient.setWebSocket(io);
+
 // Server indítása
-const server = app.listen(PORT, () => {
+server.listen(PORT, () => {
   logger.info(`IntelliVend API server listening on port ${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`MQTT: ${mqttClient.isConnected() ? 'Connected' : 'Disabled'}`);
+  logger.info(`WebSocket: Ready`);
   
   // Create email_notifications table if it doesn't exist
   const createEmailTableQuery = `

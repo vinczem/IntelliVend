@@ -132,33 +132,66 @@ class ESP32Mock:
             print(f"❌ [ESP32] Error handling message: {e}")
     
     def handle_dispense_command(self, payload: Dict):
-        """Dispense parancs kezelése"""
+        """Dispense parancs kezelése - támogatja mind az egyszerű, mind a komplex formátumot"""
         pump_id = payload.get("pump_id")
         amount_ml = payload.get("amount_ml")
-        duration_ms = payload.get("duration_ms")
+        duration_ms = payload.get("duration_ms")  # Optional, calculated if not provided
         recipe_name = payload.get("recipe_name", "Unknown")
         
-        # Validate
-        if pump_id is None or amount_ml is None or duration_ms is None:
-            self.publish_error(pump_id or 0, "INVALID_COMMAND", "Missing required fields", "critical")
+        # Validate required fields
+        if pump_id is None or amount_ml is None:
+            self.publish_error(pump_id or 0, "INVALID_COMMAND", "Missing required fields: pump_id and amount_ml", "critical")
             return
         
-        # Simulate random error
-        if random.random() < self.error_rate:
-            error_codes = ["PUMP_STUCK", "FLOW_SENSOR_ERROR", "TIMEOUT"]
-            error_code = random.choice(error_codes)
-            self.publish_error(pump_id, error_code, f"Simulated error: {error_code}", "critical")
-            return
-        
-        print(f"🚀 [ESP32] Starting dispense: Pump {pump_id}, {amount_ml}ml, {duration_ms}ms")
-        
-        # Run dispense in separate thread
-        thread = threading.Thread(
-            target=self.simulate_dispense,
-            args=(pump_id, amount_ml, duration_ms, recipe_name),
-            daemon=True
-        )
-        thread.start()
+        # Handle complex multi-pump dispense (amount_ml is array)
+        if isinstance(amount_ml, list):
+            print(f"🥤 [ESP32] Multi-pump recipe: {recipe_name or 'Unknown'}")
+            # Calculate total amount and duration
+            total_ml = sum(item.get("quantity_ml", 0) for item in amount_ml)
+            if duration_ms is None:
+                flow_rate_ml_s = 20.0
+                duration_ms = int((total_ml / flow_rate_ml_s) * 1000)
+            
+            # Simulate random error
+            if random.random() < self.error_rate:
+                error_codes = ["PUMP_STUCK", "FLOW_SENSOR_ERROR", "TIMEOUT"]
+                error_code = random.choice(error_codes)
+                self.publish_error(pump_id, error_code, f"Simulated error: {error_code}", "critical")
+                return
+            
+            print(f"🚀 [ESP32] Starting multi-pump dispense: {len(amount_ml)} ingredients, {total_ml}ml total")
+            
+            # Run dispense in separate thread
+            thread = threading.Thread(
+                target=self.simulate_dispense,
+                args=(pump_id, total_ml, duration_ms, recipe_name or "Multi-ingredient"),
+                daemon=True
+            )
+            thread.start()
+            
+        # Handle simple single-pump dispense (amount_ml is number)
+        else:
+            # Calculate duration if not provided (assume 20ml/s flow rate)
+            if duration_ms is None:
+                flow_rate_ml_s = 20.0
+                duration_ms = int((amount_ml / flow_rate_ml_s) * 1000)
+            
+            # Simulate random error
+            if random.random() < self.error_rate:
+                error_codes = ["PUMP_STUCK", "FLOW_SENSOR_ERROR", "TIMEOUT"]
+                error_code = random.choice(error_codes)
+                self.publish_error(pump_id, error_code, f"Simulated error: {error_code}", "critical")
+                return
+            
+            print(f"🚀 [ESP32] Starting dispense: Pump {pump_id}, {amount_ml}ml, {duration_ms}ms")
+            
+            # Run dispense in separate thread
+            thread = threading.Thread(
+                target=self.simulate_dispense,
+                args=(pump_id, amount_ml, duration_ms, recipe_name),
+                daemon=True
+            )
+            thread.start()
     
     def simulate_dispense(self, pump_id: int, amount_ml: float, duration_ms: int, recipe_name: str):
         """Adagolás szimulálása progress update-ekkel"""

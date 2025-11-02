@@ -262,5 +262,39 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/maintenance/test-dispense
+ * Test endpoint to trigger mock ESP32 dispense for testing real-time progress bar
+ */
+router.post('/test-dispense', async (req, res) => {
+  const { pump_id = 1, amount_ml = 50, recipe_name = 'Test Drink' } = req.body;
+
+  if (!mqttClient) {
+    return res.status(503).json({ error: 'MQTT not connected' });
+  }
+
+  try {
+    const command = {
+      pump_id,
+      amount_ml,
+      recipe_name
+    };
+
+    mqttClient.publish('intellivend/dispense/command', JSON.stringify(command), { qos: 1 });
+    
+    logger.info(`Test dispense command sent: Pump ${pump_id}, ${amount_ml}ml`);
+
+    res.json({
+      success: true,
+      message: 'Test dispense started',
+      command
+    });
+
+  } catch (error) {
+    logger.error('Error sending test dispense command:', error);
+    res.status(500).json({ error: 'Failed to send test dispense command' });
+  }
+});
+
 module.exports = router;
 module.exports.setMqttClient = setMqttClient;

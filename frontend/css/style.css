@@ -683,7 +683,7 @@ nav {
     position: fixed;
     top: 20px;
     right: 20px;
-    z-index: 2000;
+    z-index: 10000;
     max-width: 400px;
 }
 
@@ -1980,3 +1980,78 @@ footer {
     margin-right: 8px;
 }
 
+/* ============================================
+   WebSocket Status Indicators
+   ============================================ */
+
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.status-indicator.online {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4CAF50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.status-indicator.offline {
+    background: rgba(244, 67, 54, 0.1);
+    color: #f44336;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.status-online {
+    background: #4CAF50;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+}
+
+.status-dot.status-offline {
+    background: #f44336;
+    box-shadow: 0 0 8px rgba(244, 67, 54, 0.6);
+    animation: none;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+}
+
+/* ESP32 & WebSocket status in header */
+#ws-status,
+#esp32-status {
+    margin-left: auto;
+    font-size: 12px;
+}
+
+/* Hide status indicators on mobile for better layout */
+@media (max-width: 768px) {
+    #ws-status,
+    #esp32-status {
+        display: none;
+    }
+    
+    .header-actions {
+        gap: 10px;
+    }
+}

@@ -6,6 +6,12 @@ class MQTTClient {
     this.client = null;
     this.connected = false;
     this.subscribers = new Map();
+    this.io = null; // WebSocket instance
+  }
+  
+  setWebSocket(io) {
+    this.io = io;
+    logger.info('WebSocket instance attached to MQTT client');
   }
 
   connect() {
@@ -162,20 +168,69 @@ class MQTTClient {
       state: payload.state,
       progress: `${payload.progress_ml}/${payload.target_ml} ml`
     });
-    // TODO: WebSocket broadcast to frontend for real-time progress bar
-    // io.emit('dispensing-progress', payload);
+    
+    // WebSocket broadcast to frontend for real-time progress bar
+    if (this.io) {
+      this.io.emit('dispense:status', payload);
+    }
   }
 
   handleDispenseComplete(payload) {
     logger.info(`Pump ${payload.pump_id} dispense complete:`, {
       actual: payload.actual_ml,
-      target: payload.target_ml,
+      requested: payload.requested_ml,
       duration: payload.duration_ms
     });
     
-    // TODO: Update dispensing_log in database
-    // TODO: Update inventory (subtract actual_ml)
-    // TODO: Check for low stock alerts
+    // WebSocket broadcast
+    if (this.io) {
+      this.io.emit('dispense:complete', payload);
+    }
+    
+    // Update database - mark dispensing_log as completed
+    const db = require('./database');
+    
+    // Find the most recent 'started' dispensing log
+    const findLogQuery = `
+      SELECT id FROM dispensing_log 
+      WHERE status = 'started' 
+      ORDER BY started_at DESC 
+      LIMIT 1
+    `;
+    
+    db.query(findLogQuery, (err, results) => {
+      if (err) {
+        logger.error('Error finding dispensing log:', err);
+        return;
+      }
+      
+      if (results.length === 0) {
+        logger.warn('No started dispensing log found to complete');
+        return;
+      }
+      
+      const logId = results[0].id;
+      
+      // Update status to completed
+      // Note: duration in seconds, not ms
+      const durationSeconds = Math.round(payload.duration_ms / 1000);
+      
+      const updateQuery = `
+        UPDATE dispensing_log 
+        SET status = 'completed',
+            duration_seconds = ?,
+            completed_at = NOW()
+        WHERE id = ?
+      `;
+      
+      db.query(updateQuery, [durationSeconds, logId], (updateErr) => {
+        if (updateErr) {
+          logger.error('Error updating dispensing log:', updateErr);
+        } else {
+          logger.info(`Dispensing log ${logId} marked as completed (${durationSeconds}s)`);
+        }
+      });
+    });
   }
 
   handleMaintenanceComplete(payload) {
@@ -183,6 +238,11 @@ class MQTTClient {
       action: payload.action_type,
       duration: payload.duration_ms
     });
+    
+    // WebSocket broadcast
+    if (this.io) {
+      this.io.emit('maintenance:complete', payload);
+    }
     
     // TODO: Update maintenance_log in database
   }
@@ -194,9 +254,13 @@ class MQTTClient {
       message: payload.message
     });
     
+    // WebSocket broadcast
+    if (this.io) {
+      this.io.emit('esp32:error', payload);
+    }
+    
     // TODO: Create alert in database
     // TODO: Send email if severity === 'critical'
-    // TODO: WebSocket notification to frontend
   }
 
   handleHeartbeat(payload) {
@@ -205,6 +269,18 @@ class MQTTClient {
       wifi: payload.wifi_rssi + ' dBm',
       memory: Math.floor((1 - payload.free_heap / payload.total_heap) * 100) + '%'
     });
+    
+    // WebSocket broadcast (for ESP32 online/offline indicator)
+    if (this.io) {
+      this.io.emit('esp32:heartbeat', {
+        uptime_ms: payload.uptime_ms,
+        wifi_rssi: payload.wifi_rssi,
+        memory_used_percent: Math.floor((1 - payload.free_heap / payload.total_heap) * 100),
+        pumps_active: payload.pumps_active,
+        firmware_version: payload.firmware_version,
+        timestamp: payload.timestamp
+      });
+    }
     
     // Check WiFi signal
     if (payload.wifi_rssi < -80) {

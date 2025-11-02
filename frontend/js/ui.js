@@ -208,29 +208,8 @@ const UI = {
             
             statusText.textContent = 'Ital készítése folyamatban...';
             
-            // Simulate progress (valós implementációban az ESP32-től kapnánk frissítéseket)
-            let progress = 0;
-            const progressBar = progressDiv.querySelector('.progress-fill');
-            
-            const interval = setInterval(() => {
-                progress += 10;
-                progressBar.style.width = `${progress}%`;
-                
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    statusText.textContent = '✓ Kész! Élvezd az italod!';
-                    
-                    setTimeout(() => {
-                        this.hideModal('dispense-modal');
-                        progressDiv.classList.add('hidden');
-                        progressBar.style.width = '0%';
-                        dispenseBtn.disabled = false;
-                        
-                        // Reload drinks to update availability
-                        loadDrinks();
-                    }, 2000);
-                }
-            }, 500);
+            // WebSocket will handle progress updates and completion
+            // Modal will be closed by websocket.js when dispense:complete arrives
             
         } catch (error) {
             this.showAlert('Hiba az ital készítésekor: ' + error.message, 'error');
@@ -1334,13 +1313,18 @@ const UI = {
             this.dailyChart.destroy();
         }
 
+        // Reverse data to show oldest to newest (left to right)
+        const reversedData = [...dailyData].reverse();
+
         // Prepare data
-        const labels = dailyData.map(d => {
-            // Format: 2025-11-01T00:00:00.000Z → 2025-11-01
-            const date = new Date(d.date);
-            return date.toISOString().split('T')[0];
+        const labels = reversedData.map(d => {
+            // Format date properly - date comes as string 'YYYY-MM-DD'
+            const dateStr = typeof d.date === 'string' ? d.date : d.date.split('T')[0];
+            const [year, month, day] = dateStr.split('-');
+            // Create short format: MM.DD.
+            return `${month}.${day}.`;
         });
-        const data = dailyData.map(d => d.drinks_count);
+        const data = reversedData.map(d => d.drinks_count);
 
         this.dailyChart = new Chart(ctx, {
             type: 'line',
@@ -1369,6 +1353,13 @@ const UI = {
                     },
                     tooltip: {
                         callbacks: {
+                            title: function(context) {
+                                // Show full date in tooltip
+                                const dataPoint = reversedData[context[0].dataIndex];
+                                const dateStr = typeof dataPoint.date === 'string' ? dataPoint.date : dataPoint.date.split('T')[0];
+                                const [year, month, day] = dateStr.split('-');
+                                return `${year}. ${month}. ${day}.`;
+                            },
                             label: function(context) {
                                 return context.parsed.y + ' ital';
                             }
@@ -1379,7 +1370,16 @@ const UI = {
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            stepSize: 1
+                            stepSize: 1,
+                            precision: 0
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 15
                         }
                     }
                 }
