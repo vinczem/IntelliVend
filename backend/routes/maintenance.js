@@ -47,20 +47,12 @@ router.post('/flush/:pump_id', async (req, res) => {
 
     // Send MQTT command to ESP32
     if (mqttClient && mqttClient.connected) {
-      const topic = 'intellivend/maintenance/flush';
-      const payload = JSON.stringify({
-        pump_number: pump.pump_number,
-        duration_ms: duration_ms,
-        action: 'flush'
-      });
-
-      mqttClient.publish(topic, payload, { qos: 1 }, (err) => {
-        if (err) {
-          logger.error(`Failed to publish flush command for pump ${pumpId}:`, err);
-        } else {
-          logger.info(`Flush command sent for pump ${pumpId} (${duration_ms}ms)`);
-        }
-      });
+      try {
+        await mqttClient.commandFlush(pumpId, duration_ms);
+        logger.info(`Flush command sent for pump ${pumpId} (${duration_ms}ms)`);
+      } catch (err) {
+        logger.error(`Failed to publish flush command for pump ${pumpId}:`, err);
+      }
     } else {
       logger.warn('MQTT client not connected, flush command not sent to hardware');
     }
@@ -109,18 +101,18 @@ router.post('/flush-all', async (req, res) => {
       
       const [result] = await db.promise().query(insertQuery, [pump.id, duration_ms, notes]);
       logIds.push(result.insertId);
+    }
 
-      // Send MQTT command for each pump
-      if (mqttClient && mqttClient.connected) {
-        const topic = 'intellivend/maintenance/flush';
-        const payload = JSON.stringify({
-          pump_number: pump.pump_number,
-          duration_ms: duration_ms,
-          action: 'flush'
-        });
-
-        mqttClient.publish(topic, payload, { qos: 1 });
+    // Send MQTT command for all pumps at once (pump_id = -1)
+    if (mqttClient && mqttClient.connected) {
+      try {
+        await mqttClient.commandFlush(-1, duration_ms);  // -1 = all pumps
+        logger.info(`Bulk flush command sent for ${pumps.length} pumps (${duration_ms}ms)`);
+      } catch (err) {
+        logger.error('Failed to publish bulk flush command:', err);
       }
+    } else {
+      logger.warn('MQTT client not connected, bulk flush command not sent to hardware');
     }
 
     logger.info(`Bulk flush initiated for ${pumps.length} pumps (${duration_ms}ms each)`);

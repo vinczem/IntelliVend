@@ -28,11 +28,12 @@ class MQTTClient {
       this.connected = true;
       logger.info('MQTT connected successfully');
       
-      // Subscribe to ESP32 topics
-      this.subscribe('intellivend/esp32/status');
-      this.subscribe('intellivend/esp32/pump/+/status');
-      this.subscribe('intellivend/dispense/feedback');
-      this.subscribe('intellivend/sensor/+');
+      // Subscribe to ESP32 topics (new unified structure)
+      this.subscribe('intellivend/status');                    // Real-time pump status updates
+      this.subscribe('intellivend/dispense/complete');         // Dispense completion
+      this.subscribe('intellivend/maintenance/complete');      // Maintenance completion
+      this.subscribe('intellivend/error');                     // Error messages
+      this.subscribe('intellivend/heartbeat');                 // ESP32 health status
     });
 
     this.client.on('error', (error) => {
@@ -115,15 +116,17 @@ class MQTTClient {
         }
       }
 
-      // Default handlers
-      if (topic === 'intellivend/esp32/status') {
-        this.handleESP32Status(payload);
-      } else if (topic.startsWith('intellivend/esp32/pump/')) {
-        this.handlePumpStatus(topic, payload);
-      } else if (topic === 'intellivend/dispense/feedback') {
-        this.handleDispenseFeedback(payload);
-      } else if (topic.startsWith('intellivend/sensor/')) {
-        this.handleSensorData(topic, payload);
+      // Default handlers (new unified structure)
+      if (topic === 'intellivend/status') {
+        this.handleStatus(payload);
+      } else if (topic === 'intellivend/dispense/complete') {
+        this.handleDispenseComplete(payload);
+      } else if (topic === 'intellivend/maintenance/complete') {
+        this.handleMaintenanceComplete(payload);
+      } else if (topic === 'intellivend/error') {
+        this.handleError(payload);
+      } else if (topic === 'intellivend/heartbeat') {
+        this.handleHeartbeat(payload);
       }
     } catch (error) {
       logger.error(`Error handling MQTT message from ${topic}:`, error);
@@ -153,57 +156,113 @@ class MQTTClient {
     return true;
   }
 
-  handleESP32Status(payload) {
-    logger.info('ESP32 Status:', payload);
-    // TODO: Update database with ESP32 status
+  handleStatus(payload) {
+    // Real-time pump status update during dispensing
+    logger.debug(`Pump ${payload.pump_id} status:`, {
+      state: payload.state,
+      progress: `${payload.progress_ml}/${payload.target_ml} ml`
+    });
+    // TODO: WebSocket broadcast to frontend for real-time progress bar
+    // io.emit('dispensing-progress', payload);
   }
 
-  handlePumpStatus(topic, payload) {
-    const pumpNumber = topic.split('/')[3];
-    logger.info(`Pump ${pumpNumber} status:`, payload);
-    // TODO: Update pump status in database
+  handleDispenseComplete(payload) {
+    logger.info(`Pump ${payload.pump_id} dispense complete:`, {
+      actual: payload.actual_ml,
+      target: payload.target_ml,
+      duration: payload.duration_ms
+    });
+    
+    // TODO: Update dispensing_log in database
+    // TODO: Update inventory (subtract actual_ml)
+    // TODO: Check for low stock alerts
   }
 
-  handleDispenseFeedback(payload) {
-    logger.info('Dispense feedback:', payload);
-    // TODO: Update dispensing_log status
+  handleMaintenanceComplete(payload) {
+    logger.info(`Maintenance complete on pump ${payload.pump_id}:`, {
+      action: payload.action_type,
+      duration: payload.duration_ms
+    });
+    
+    // TODO: Update maintenance_log in database
   }
 
-  handleSensorData(topic, payload) {
-    const sensorId = topic.split('/')[2];
-    logger.debug(`Sensor ${sensorId} data:`, payload);
-    // TODO: Process sensor data (flow meters, etc.)
+  handleError(payload) {
+    logger.error(`ESP32 Error [${payload.error_code}]:`, {
+      pump: payload.pump_id,
+      severity: payload.severity,
+      message: payload.message
+    });
+    
+    // TODO: Create alert in database
+    // TODO: Send email if severity === 'critical'
+    // TODO: WebSocket notification to frontend
   }
 
-  // Commands to ESP32
-  async commandDispense(logId, commands) {
+  handleHeartbeat(payload) {
+    logger.debug('ESP32 Heartbeat:', {
+      uptime: Math.floor(payload.uptime_ms / 1000) + 's',
+      wifi: payload.wifi_rssi + ' dBm',
+      memory: Math.floor((1 - payload.free_heap / payload.total_heap) * 100) + '%'
+    });
+    
+    // Check WiFi signal
+    if (payload.wifi_rssi < -80) {
+      logger.warn('ESP32 WiFi signal weak!');
+    }
+    
+    // Check memory usage
+    const memUsage = (1 - payload.free_heap / payload.total_heap) * 100;
+    if (memUsage > 90) {
+      logger.warn(`ESP32 low memory: ${memUsage.toFixed(1)}% used`);
+    }
+    
+    // TODO: Store last heartbeat timestamp for offline detection
+  }
+
+  // Commands to ESP32 (new unified structure)
+  async commandDispense(pumpId, amountML, durationMS, recipeName = '') {
     const message = {
-      log_id: logId,
-      timestamp: Date.now(),
-      commands: commands
+      pump_id: pumpId,
+      amount_ml: amountML,
+      duration_ms: durationMS,
+      recipe_name: recipeName,
+      timestamp: new Date().toISOString()
     };
 
     await this.publish('intellivend/dispense/command', message);
-    logger.info(`Dispense command sent for log_id: ${logId}`);
+    logger.info(`Dispense command sent: Pump ${pumpId}, ${amountML}ml`);
   }
 
-  async commandPump(pumpNumber, action, duration = 0) {
+  async commandFlush(pumpId, durationMS) {
     const message = {
-      action: action, // 'start', 'stop', 'test'
-      duration: duration,
-      timestamp: Date.now()
+      pump_id: pumpId,  // -1 for all pumps
+      duration_ms: durationMS
     };
 
-    await this.publish(`intellivend/pump/${pumpNumber}/control`, message);
-    logger.info(`Pump ${pumpNumber} command: ${action}`);
+    await this.publish('intellivend/maintenance/flush', message);
+    logger.info(`Flush command sent: Pump ${pumpId}, ${durationMS}ms`);
   }
 
-  async publishInventoryUpdate(inventory) {
-    await this.publish('intellivend/inventory/status', inventory, { retain: true });
+  async commandCalibration(pumpId, testAmountML, timeoutMS = 30000) {
+    const message = {
+      pump_id: pumpId,
+      test_amount_ml: testAmountML,
+      timeout_ms: timeoutMS
+    };
+
+    await this.publish('intellivend/calibration/start', message);
+    logger.info(`Calibration started: Pump ${pumpId}, ${testAmountML}ml`);
   }
 
-  async publishAlert(alert) {
-    await this.publish('intellivend/alerts', alert);
+  async commandEmergencyStop(reason = 'User initiated') {
+    const message = {
+      reason: reason,
+      timestamp: new Date().toISOString()
+    };
+
+    await this.publish('intellivend/emergency/stop', message, { qos: 2 });
+    logger.warn(`Emergency stop commanded: ${reason}`);
   }
 
   disconnect() {
