@@ -101,35 +101,45 @@ router.post('/', async (req, res) => {
     }
     
     // Calculate adjusted quantities based on strength
+    // Goal: Keep total volume constant, maintain ratios between non-alcoholic ingredients
+    
+    // First, calculate original totals
+    const originalTotal = ingredients.reduce((sum, ing) => sum + parseFloat(ing.quantity), 0);
+    const alcoholicTotal = ingredients
+      .filter(ing => parseFloat(ing.alcohol_percentage) > 0)
+      .reduce((sum, ing) => sum + parseFloat(ing.quantity), 0);
+    const nonAlcoholicTotal = originalTotal - alcoholicTotal;
+    
+    // Calculate new alcoholic total after strength adjustment
+    const newAlcoholicTotal = alcoholicTotal * alcoholMultiplier;
+    
+    // Remaining volume for non-alcoholic ingredients (to maintain total volume)
+    const newNonAlcoholicTotal = originalTotal - newAlcoholicTotal;
+    
+    // Scale factor for non-alcoholic ingredients (to maintain their ratios)
+    const nonAlcoholicScale = nonAlcoholicTotal > 0 ? newNonAlcoholicTotal / nonAlcoholicTotal : 1;
+    
     const adjustedIngredients = ingredients.map(ing => {
-      const baseQty = parseFloat(ing.quantity);
       const isAlcoholic = parseFloat(ing.alcohol_percentage) > 0;
       
-      let adjustedQty = baseQty;
-      if (strength !== 'normal') {
-        if (isAlcoholic) {
-          // Apply multiplier to alcoholic ingredients
-          adjustedQty = baseQty * alcoholMultiplier;
-        } else {
-          // Compensate non-alcoholic ingredients (inverse multiplier)
-          // If alcohol is reduced (weak), add more mixer. If increased (strong), reduce mixer.
-          // This keeps total volume approximately the same
-          const compensationFactor = 2 - alcoholMultiplier; // weak:1.25, normal:1.0, strong:0.75
-          adjustedQty = baseQty * compensationFactor;
-        }
+      if (isAlcoholic) {
+        // Alcoholic ingredients get multiplied by strength
+        return {
+          ...ing,
+          quantity: parseFloat(ing.quantity) * alcoholMultiplier
+        };
+      } else {
+        // Non-alcoholic ingredients scaled to fill remaining volume while maintaining ratios
+        return {
+          ...ing,
+          quantity: parseFloat(ing.quantity) * nonAlcoholicScale
+        };
       }
-      
-      return {
-        ...ing,
-        original_quantity: baseQty,
-        adjusted_quantity: adjustedQty,
-        is_alcoholic: isAlcoholic
-      };
-    });
+    });    
     
     // Check if all ingredients are available (with adjusted quantities)
     const unavailable = adjustedIngredients.filter(ing => {
-      const qtyInMl = convertToMl(ing.adjusted_quantity, ing.unit);
+      const qtyInMl = convertToMl(ing.quantity, ing.unit);
       return parseFloat(ing.current_quantity) < qtyInMl;
     });
     
@@ -141,7 +151,7 @@ router.post('/', async (req, res) => {
     }
     
     const recipe = adjustedIngredients[0];
-    const totalVolume = adjustedIngredients.reduce((sum, ing) => sum + convertToMl(ing.adjusted_quantity, ing.unit), 0);
+    const totalVolume = adjustedIngredients.reduce((sum, ing) => sum + convertToMl(ing.quantity, ing.unit), 0);
     
         // Get connection from pool
     connection = await getConnectionPromise();
@@ -161,7 +171,7 @@ router.post('/', async (req, res) => {
       
       // Create dispensing details and update inventory (use adjusted quantities)
       for (const ing of adjustedIngredients) {
-        const qtyInMl = convertToMl(ing.adjusted_quantity, ing.unit);
+        const qtyInMl = convertToMl(ing.quantity, ing.unit);
         
         await queryPromise(connection,
           'INSERT INTO dispensing_details (log_id, pump_id, ingredient_id, ingredient_name, quantity_ml, order_number) VALUES (?, ?, ?, ?, ?, ?)',
@@ -185,7 +195,7 @@ router.post('/', async (req, res) => {
       const dispenseCommands = adjustedIngredients.map(ing => ({
         pump_number: ing.pump_number,
         gpio_pin: ing.gpio_pin,
-        quantity_ml: convertToMl(ing.adjusted_quantity, ing.unit),
+        quantity_ml: convertToMl(ing.quantity, ing.unit),
         ingredient: ing.ingredient_name,
         order: ing.order_number
       }));
