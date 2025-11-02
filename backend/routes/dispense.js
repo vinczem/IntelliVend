@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../config/database');
 const logger = require('../config/logger');
 const mqttClient = require('../config/mqtt');
+const emailService = require('../services/emailService');
 
 // Promise wrappers for database operations
 function dbQueryPromise(query, params) {
@@ -306,8 +307,23 @@ function checkLowStock(ingredients) {
             
             db.query(updateQuery, [newType, newSeverity, message, alertToUpdate.id], (err) => {
               if (!err) {
-                if (alertToUpdate.severity !== newSeverity) {
+                const severityEscalated = alertToUpdate.severity !== newSeverity;
+                
+                if (severityEscalated) {
                   logger.warn(`Alert severity escalated: ${message}`);
+                  
+                  // Send email on severity escalation (warning → critical)
+                  if (newSeverity === 'critical') {
+                    sendAlertEmail({
+                      id: alertToUpdate.id,
+                      message: message,
+                      severity: newSeverity,
+                      type: newType,
+                      ingredient_name: inv.name,
+                      pump_number: inv.pump_number,
+                      created_at: new Date()
+                    });
+                  }
                 } else {
                   logger.info(`Alert updated: ${message}`);
                 }
@@ -337,9 +353,20 @@ function checkLowStock(ingredients) {
               VALUES (?, ?, ?, ?, ?)
             `;
             
-            db.query(insertQuery, [newType, newSeverity, message, ing.pump_id, ing.ingredient_id], (err) => {
+            db.query(insertQuery, [newType, newSeverity, message, ing.pump_id, ing.ingredient_id], (err, result) => {
               if (!err) {
                 logger.warn(`New alert created: ${message}`);
+                
+                // Send email for new alert
+                sendAlertEmail({
+                  id: result.insertId,
+                  message: message,
+                  severity: newSeverity,
+                  type: newType,
+                  ingredient_name: inv.name,
+                  pump_number: inv.pump_number,
+                  created_at: new Date()
+                });
               }
             });
           }
@@ -347,6 +374,61 @@ function checkLowStock(ingredients) {
       }
     });
   });
+}
+
+// Send alert email helper function
+async function sendAlertEmail(alert) {
+  try {
+    // Check if we already sent an email for this alert recently (within last hour)
+    const checkQuery = `
+      SELECT id FROM email_notifications
+      WHERE alert_id = ?
+        AND sent_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+      LIMIT 1
+    `;
+    
+    db.query(checkQuery, [alert.id], async (err, results) => {
+      if (err || results.length > 0) {
+        // Skip if error or email already sent recently
+        if (results.length > 0) {
+          logger.info(`Email already sent for alert ${alert.id} within last hour, skipping`);
+        }
+        return;
+      }
+      
+      // Send appropriate email based on type
+      let emailResult;
+      if (alert.type === 'empty_bottle') {
+        emailResult = await emailService.sendEmptyBottleAlert(alert);
+      } else {
+        emailResult = await emailService.sendLowStockAlert(alert);
+      }
+      
+      // Log the email notification
+      const insertQuery = `
+        INSERT INTO email_notifications (alert_id, email_type, recipient_email, status, error_message)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      
+      const emailType = alert.type === 'empty_bottle' ? 'empty_bottle' : 'low_stock';
+      const status = emailResult.success ? 'sent' : 'failed';
+      const errorMessage = emailResult.success ? null : emailResult.error;
+      
+      db.query(insertQuery, [
+        alert.id,
+        emailType,
+        process.env.ALERT_EMAIL,
+        status,
+        errorMessage
+      ], (err) => {
+        if (err) {
+          logger.error('Error logging email notification:', err);
+        }
+      });
+    });
+  } catch (error) {
+    logger.error('Error sending alert email:', error);
+  }
 }
 
 module.exports = router;

@@ -35,6 +35,7 @@ app.use('/api/inventory', require('./routes/inventory'));
 app.use('/api/dispense', require('./routes/dispense'));
 app.use('/api/alerts', require('./routes/alerts'));
 app.use('/api/stats', require('./routes/stats'));
+app.use('/api/email', require('./routes/email'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -85,6 +86,29 @@ const server = app.listen(PORT, () => {
   logger.info(`IntelliVend API server listening on port ${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`MQTT: ${mqttClient.isConnected() ? 'Connected' : 'Disabled'}`);
+  
+  // Create email_notifications table if it doesn't exist
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS email_notifications (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      alert_id INT NOT NULL,
+      email_type ENUM('low_stock', 'empty_bottle', 'summary') NOT NULL,
+      recipient_email VARCHAR(255) NOT NULL,
+      sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      status ENUM('sent', 'failed') DEFAULT 'sent',
+      error_message TEXT,
+      INDEX idx_alert_id (alert_id),
+      INDEX idx_sent_at (sent_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `;
+  
+  db.query(createTableQuery, (err) => {
+    if (err) {
+      logger.error('Error creating email_notifications table:', err);
+    } else {
+      logger.info('📧 Email notifications table ready');
+    }
+  });
 });
 
 // Graceful shutdown

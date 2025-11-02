@@ -415,8 +415,25 @@ const UI = {
     },
 
     async renderIngredientsAdmin(container) {
+        // Show loading
+        this.showLoading(container, 'Alapanyagok betöltése...');
+        
         try {
             const ingredients = await API.getIngredients();
+            
+            // Check if empty
+            if (ingredients.length === 0) {
+                this.showEmptyState(container, {
+                    icon: '🧪',
+                    title: 'Nincsenek alapanyagok',
+                    message: 'Adj hozzá egy új alapanyagot a kezdéshez!',
+                    action: {
+                        text: '+ Új alapanyag',
+                        callback: () => this.showIngredientForm()
+                    }
+                });
+                return;
+            }
             
             container.innerHTML = `
                 <div class="admin-header">
@@ -481,7 +498,15 @@ const UI = {
             });
 
         } catch (error) {
-            container.innerHTML = `<p class="error">Hiba: ${error.message}</p>`;
+            this.showEmptyState(container, {
+                icon: '❌',
+                title: 'Hiba történt',
+                message: error.message,
+                action: {
+                    text: '🔄 Újrapróbálás',
+                    callback: () => this.showAdminTab('ingredients')
+                }
+            });
         }
     },
 
@@ -613,11 +638,24 @@ const UI = {
     },
 
     async loadPumpsAdmin(container) {
+        // Show loading
+        this.showLoading(container, 'Pumpák betöltése...');
+        
         try {
             const [pumps, ingredients] = await Promise.all([
                 API.getPumps(),
                 API.getIngredients()
             ]);
+            
+            // Check if empty
+            if (pumps.length === 0) {
+                this.showEmptyState(container, {
+                    icon: '⚙️',
+                    title: 'Nincsenek pumpák',
+                    message: 'A rendszerben nincs még pumpa konfigurálva.'
+                });
+                return;
+            }
             
             container.innerHTML = `
                 <div class="admin-header">
@@ -685,7 +723,15 @@ const UI = {
             });
 
         } catch (error) {
-            container.innerHTML = `<p class="error">Hiba: ${error.message}</p>`;
+            this.showEmptyState(container, {
+                icon: '❌',
+                title: 'Hiba történt',
+                message: error.message,
+                action: {
+                    text: '🔄 Újrapróbálás',
+                    callback: () => this.showAdminTab('pumps')
+                }
+            });
         }
     },
 
@@ -877,8 +923,25 @@ const UI = {
     },
 
     async loadRecipesAdmin(container) {
+        // Show loading
+        this.showLoading(container, 'Receptek betöltése...');
+        
         try {
             const recipes = await API.getRecipes({});
+            
+            // Check if empty
+            if (recipes.length === 0) {
+                this.showEmptyState(container, {
+                    icon: '📖',
+                    title: 'Nincsenek receptek',
+                    message: 'Hozz létre egy új receptet a kezdéshez!',
+                    action: {
+                        text: '+ Új recept',
+                        callback: () => this.showRecipeForm()
+                    }
+                });
+                return;
+            }
             
             container.innerHTML = `
                 <div class="admin-header">
@@ -948,7 +1011,15 @@ const UI = {
             });
 
         } catch (error) {
-            container.innerHTML = `<p class="error">Hiba: ${error.message}</p>`;
+            this.showEmptyState(container, {
+                icon: '❌',
+                title: 'Hiba történt',
+                message: error.message,
+                action: {
+                    text: '🔄 Újrapróbálás',
+                    callback: () => this.showAdminTab('recipes')
+                }
+            });
         }
     },
 
