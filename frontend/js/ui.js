@@ -182,6 +182,31 @@ const UI = {
             
             document.getElementById('modal-drink-details').innerHTML = detailsHtml;
             
+            // Check if recipe has alcoholic ingredients
+            const hasAlcohol = recipe.ingredients.some(ing => parseFloat(ing.alcohol_percentage || 0) > 0);
+            const strengthSelector = document.getElementById('strength-selector');
+            
+            if (hasAlcohol) {
+                strengthSelector.classList.remove('hidden');
+                // Reset to default (normal)
+                document.querySelectorAll('.strength-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.strength === 'normal') {
+                        btn.classList.add('active');
+                    }
+                });
+                
+                // Add click handlers to strength buttons
+                document.querySelectorAll('.strength-btn').forEach(btn => {
+                    btn.onclick = () => {
+                        document.querySelectorAll('.strength-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                    };
+                });
+            } else {
+                strengthSelector.classList.add('hidden');
+            }
+            
             const dispenseBtn = document.getElementById('btn-dispense');
             dispenseBtn.disabled = !recipe.is_available;
             dispenseBtn.textContent = recipe.is_available ? 'Kérek egy ilyet!' : 'Nem elérhető';
@@ -200,11 +225,19 @@ const UI = {
         const dispenseBtn = document.getElementById('btn-dispense');
         
         try {
+            // Get selected strength
+            const strengthSelector = document.getElementById('strength-selector');
+            let strength = 'normal';
+            if (!strengthSelector.classList.contains('hidden')) {
+                const activeBtn = document.querySelector('.strength-btn.active');
+                strength = activeBtn ? activeBtn.dataset.strength : 'normal';
+            }
+            
             dispenseBtn.disabled = true;
             progressDiv.classList.remove('hidden');
             statusText.textContent = 'Készítés indítása...';
             
-            const result = await API.dispenseDrink(recipeId);
+            const result = await API.dispenseDrink(recipeId, strength);
             
             statusText.textContent = 'Ital készítése folyamatban...';
             

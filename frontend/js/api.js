@@ -132,10 +132,13 @@ const API = {
     },
 
     // Dispense
-    dispenseDrink(recipeId) {
+    dispenseDrink(recipeId, strength = 'normal') {
         return this.fetch('/dispense', {
             method: 'POST',
-            body: JSON.stringify({ recipe_id: recipeId })
+            body: JSON.stringify({ 
+                recipe_id: recipeId,
+                strength: strength 
+            })
         });
     },
 

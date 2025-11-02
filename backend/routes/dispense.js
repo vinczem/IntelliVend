@@ -61,15 +61,29 @@ function rollbackPromise(connection) {
 
 // POST dispense a drink
 router.post('/', async (req, res) => {
-  const { recipe_id } = req.body;
+  const { recipe_id, strength = 'normal' } = req.body; // strength: weak, normal, strong
   
   let connection;
   
   try {
+    // Validate strength parameter
+    const validStrengths = ['weak', 'normal', 'strong'];
+    if (!validStrengths.includes(strength)) {
+      return res.status(400).json({ error: 'Invalid strength parameter. Must be: weak, normal, or strong' });
+    }
+    
+    // Strength multipliers for alcoholic ingredients
+    const strengthMultipliers = {
+      weak: 0.75,
+      normal: 1.0,
+      strong: 1.25
+    };
+    const alcoholMultiplier = strengthMultipliers[strength];
+    
     // Get recipe with ingredients
     const recipeQuery = `
       SELECT r.*, ri.ingredient_id, ri.quantity, ri.unit, ri.order_number,
-             i.name as ingredient_name, p.id as pump_id, p.pump_number, p.gpio_pin,
+             i.name as ingredient_name, i.alcohol_percentage, p.id as pump_id, p.pump_number, p.gpio_pin,
              inv.current_quantity
       FROM recipes r
       JOIN recipe_ingredients ri ON r.id = ri.recipe_id
@@ -86,9 +100,36 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Recipe not found or not available' });
     }
     
-    // Check if all ingredients are available
-    const unavailable = ingredients.filter(ing => {
-      const qtyInMl = convertToMl(parseFloat(ing.quantity), ing.unit);
+    // Calculate adjusted quantities based on strength
+    const adjustedIngredients = ingredients.map(ing => {
+      const baseQty = parseFloat(ing.quantity);
+      const isAlcoholic = parseFloat(ing.alcohol_percentage) > 0;
+      
+      let adjustedQty = baseQty;
+      if (strength !== 'normal') {
+        if (isAlcoholic) {
+          // Apply multiplier to alcoholic ingredients
+          adjustedQty = baseQty * alcoholMultiplier;
+        } else {
+          // Compensate non-alcoholic ingredients (inverse multiplier)
+          // If alcohol is reduced (weak), add more mixer. If increased (strong), reduce mixer.
+          // This keeps total volume approximately the same
+          const compensationFactor = 2 - alcoholMultiplier; // weak:1.25, normal:1.0, strong:0.75
+          adjustedQty = baseQty * compensationFactor;
+        }
+      }
+      
+      return {
+        ...ing,
+        original_quantity: baseQty,
+        adjusted_quantity: adjustedQty,
+        is_alcoholic: isAlcoholic
+      };
+    });
+    
+    // Check if all ingredients are available (with adjusted quantities)
+    const unavailable = adjustedIngredients.filter(ing => {
+      const qtyInMl = convertToMl(ing.adjusted_quantity, ing.unit);
       return parseFloat(ing.current_quantity) < qtyInMl;
     });
     
@@ -99,27 +140,28 @@ router.post('/', async (req, res) => {
       });
     }
     
-    const recipe = ingredients[0];
-    const totalVolume = ingredients.reduce((sum, ing) => sum + convertToMl(parseFloat(ing.quantity), ing.unit), 0);
+    const recipe = adjustedIngredients[0];
+    const totalVolume = adjustedIngredients.reduce((sum, ing) => sum + convertToMl(ing.adjusted_quantity, ing.unit), 0);
     
-    // Get connection from pool
+        // Get connection from pool
     connection = await getConnectionPromise();
     
     // Start transaction
     await beginTransactionPromise(connection);
     
     try {
-      // Create dispensing log
+      // Create dispensing log with strength information
+      const strengthNote = strength !== 'normal' ? `Strength: ${strength}` : null;
       const logResult = await queryPromise(connection,
-        'INSERT INTO dispensing_log (recipe_id, recipe_name, total_volume_ml, status) VALUES (?, ?, ?, ?)',
-        [recipe_id, recipe.name, totalVolume, 'started']
+        'INSERT INTO dispensing_log (recipe_id, recipe_name, total_volume_ml, status, notes) VALUES (?, ?, ?, ?, ?)',
+        [recipe_id, recipe.name, totalVolume, 'started', strengthNote]
       );
       
       const logId = logResult.insertId;
       
-      // Create dispensing details and update inventory
-      for (const ing of ingredients) {
-        const qtyInMl = convertToMl(parseFloat(ing.quantity), ing.unit);
+      // Create dispensing details and update inventory (use adjusted quantities)
+      for (const ing of adjustedIngredients) {
+        const qtyInMl = convertToMl(ing.adjusted_quantity, ing.unit);
         
         await queryPromise(connection,
           'INSERT INTO dispensing_details (log_id, pump_id, ingredient_id, ingredient_name, quantity_ml, order_number) VALUES (?, ?, ?, ?, ?, ?)',
@@ -137,13 +179,13 @@ router.post('/', async (req, res) => {
       connection.release();
       connection = null;
       
-      logger.info(`Dispensing started: ${recipe.name} (Log ID: ${logId})`);
+      logger.info(`Dispensing started: ${recipe.name} (Log ID: ${logId}, Strength: ${strength})`);
       
-      // Prepare ESP32 commands
-      const dispenseCommands = ingredients.map(ing => ({
+      // Prepare ESP32 commands (use adjusted quantities)
+      const dispenseCommands = adjustedIngredients.map(ing => ({
         pump_number: ing.pump_number,
         gpio_pin: ing.gpio_pin,
-        quantity_ml: convertToMl(parseFloat(ing.quantity), ing.unit),
+        quantity_ml: convertToMl(ing.adjusted_quantity, ing.unit),
         ingredient: ing.ingredient_name,
         order: ing.order_number
       }));

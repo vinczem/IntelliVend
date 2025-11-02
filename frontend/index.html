@@ -171,6 +171,29 @@
                 <span class="close">&times;</span>
                 <h2 id="modal-drink-name"></h2>
                 <div id="modal-drink-details"></div>
+                
+                <!-- Strength Selector (csak alkoholos italokhoz) -->
+                <div id="strength-selector" class="strength-selector hidden">
+                    <h3 class="strength-title">Erősség kiválasztása</h3>
+                    <div class="strength-buttons">
+                        <button class="strength-btn" data-strength="weak">
+                            <span class="strength-icon">🍹</span>
+                            <span class="strength-label">Gyenge</span>
+                            <span class="strength-multiplier">0.75x</span>
+                        </button>
+                        <button class="strength-btn active" data-strength="normal">
+                            <span class="strength-icon">🍸</span>
+                            <span class="strength-label">Normál</span>
+                            <span class="strength-multiplier">1.0x</span>
+                        </button>
+                        <button class="strength-btn" data-strength="strong">
+                            <span class="strength-icon">💪</span>
+                            <span class="strength-label">Erős</span>
+                            <span class="strength-multiplier">1.25x</span>
+                        </button>
+                    </div>
+                </div>
+                
                 <div id="dispense-progress" class="hidden">
                     <div class="progress-bar">
                         <div class="progress-fill"></div>

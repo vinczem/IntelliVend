@@ -92,7 +92,7 @@ router.get('/:id', (req, res) => {
     
     // Get ingredients
     const ingredientsQuery = `
-      SELECT ri.*, i.name, i.type, i.unit as ingredient_unit,
+      SELECT ri.*, i.name, i.type, i.alcohol_percentage, i.unit as ingredient_unit,
              inv.current_quantity, p.pump_number, p.is_active
       FROM recipe_ingredients ri
       JOIN ingredients i ON ri.ingredient_id = i.id

@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS dispensing_log (
     total_volume_ml DECIMAL(10,2) NOT NULL,
     status ENUM('started', 'in_progress', 'completed', 'failed', 'cancelled') NOT NULL,
     error_message TEXT NULL,
+    notes TEXT NULL,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP NULL,
     duration_seconds INT NULL,
