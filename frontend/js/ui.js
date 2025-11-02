@@ -136,7 +136,9 @@ const UI = {
             card.className = 'drink-card';
             card.innerHTML = `
                 <div class="drink-image">
-                    ${drink.image_url ? `<img src="${drink.image_url}" alt="${drink.name}">` : '<div class="placeholder-image">🍹</div>'}
+                    ${drink.image_url ? 
+                        `<img src="${API.staticURL}${drink.image_url}" alt="${drink.name}">` : 
+                        '<div class="placeholder-image">🍹</div>'}
                 </div>
                 <h3>${drink.name}</h3>
                 <p class="drink-description">${drink.description || ''}</p>
@@ -1081,6 +1083,34 @@ const UI = {
                             </div>
                         </div>
                         
+                        ${isEdit ? `
+                        <div class="form-group">
+                            <label>Recept kép</label>
+                            <div class="image-upload-container">
+                                <div class="image-preview">
+                                    ${recipe?.image_url ? 
+                                        `<img src="${API.staticURL}${recipe.image_url}" alt="${recipe.name}" id="recipe-image-preview">` :
+                                        `<div class="no-image-placeholder" id="recipe-image-preview">
+                                            <span>🍹</span>
+                                            <p>Nincs kép feltöltve</p>
+                                        </div>`
+                                    }
+                                </div>
+                                <div class="image-upload-actions">
+                                    <input type="file" id="recipe-image-input" accept="image/*" style="display: none;">
+                                    <button type="button" class="btn-secondary btn-sm" id="upload-image-btn">
+                                        📸 Kép feltöltése
+                                    </button>
+                                    ${recipe?.image_url ? `
+                                    <button type="button" class="btn-danger btn-sm" id="delete-image-btn">
+                                        🗑️ Kép törlése
+                                    </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
                         <div class="form-group">
                             <label>Leírás</label>
                             <textarea name="description" rows="2">${recipe?.description || ''}</textarea>
@@ -1156,6 +1186,124 @@ const UI = {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) modalContainer.remove();
         });
+
+        // Image upload handlers (only in edit mode)
+        if (isEdit) {
+            const imageInput = document.getElementById('recipe-image-input');
+            const uploadBtn = document.getElementById('upload-image-btn');
+            const deleteBtn = document.getElementById('delete-image-btn');
+            
+            if (uploadBtn) {
+                uploadBtn.addEventListener('click', () => imageInput.click());
+            }
+            
+            if (imageInput) {
+                imageInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    // Validate file type
+                    if (!file.type.startsWith('image/')) {
+                        this.showAlert('Csak kép fájlokat lehet feltölteni!', 'error');
+                        return;
+                    }
+                    
+                    // Validate file size (5MB)
+                    if (file.size > 5 * 1024 * 1024) {
+                        this.showAlert('A kép mérete maximum 5MB lehet!', 'error');
+                        return;
+                    }
+                    
+                    try {
+                        uploadBtn.disabled = true;
+                        uploadBtn.innerHTML = '<span class="btn-spinner"></span> Feltöltés...';
+                        
+                        const imageUrl = await API.uploadRecipeImage(recipeId, file);
+                        
+                        // Update preview
+                        const preview = document.getElementById('recipe-image-preview');
+                        if (preview.tagName === 'IMG') {
+                            preview.src = API.staticURL + imageUrl;
+                        } else {
+                            preview.outerHTML = `<img src="${API.staticURL}${imageUrl}" alt="${recipe.name}" id="recipe-image-preview">`;
+                        }
+                        
+                        // Add delete button if not exists
+                        if (!deleteBtn) {
+                            const actionsDiv = document.querySelector('.image-upload-actions');
+                            actionsDiv.innerHTML += `
+                                <button type="button" class="btn-danger btn-sm" id="delete-image-btn">
+                                    🗑️ Kép törlése
+                                </button>
+                            `;
+                            // Re-attach delete handler
+                            document.getElementById('delete-image-btn').addEventListener('click', async () => {
+                                if (!confirm('Biztosan törölni szeretnéd a képet?')) return;
+                                
+                                try {
+                                    await API.deleteRecipeImage(recipeId);
+                                    
+                                    // Update preview to placeholder
+                                    const preview = document.getElementById('recipe-image-preview');
+                                    preview.outerHTML = `
+                                        <div class="no-image-placeholder" id="recipe-image-preview">
+                                            <span>🍹</span>
+                                            <p>Nincs kép feltöltve</p>
+                                        </div>
+                                    `;
+                                    
+                                    // Remove delete button
+                                    document.getElementById('delete-image-btn').remove();
+                                    
+                                    this.showAlert('Kép törölve!', 'success');
+                                } catch (error) {
+                                    this.showAlert('Hiba a kép törlésekor: ' + error.message, 'error');
+                                }
+                            });
+                        }
+                        
+                        this.showAlert('Kép feltöltve!', 'success');
+                    } catch (error) {
+                        this.showAlert('Hiba a kép feltöltésekor: ' + error.message, 'error');
+                    } finally {
+                        uploadBtn.disabled = false;
+                        uploadBtn.innerHTML = '📸 Kép feltöltése';
+                        imageInput.value = ''; // Reset input
+                    }
+                });
+            }
+            
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', async () => {
+                    if (!confirm('Biztosan törölni szeretnéd a képet?')) return;
+                    
+                    try {
+                        deleteBtn.disabled = true;
+                        deleteBtn.innerHTML = '<span class="btn-spinner"></span> Törlés...';
+                        
+                        await API.deleteRecipeImage(recipeId);
+                        
+                        // Update preview to placeholder
+                        const preview = document.getElementById('recipe-image-preview');
+                        preview.outerHTML = `
+                            <div class="no-image-placeholder" id="recipe-image-preview">
+                                <span>🍹</span>
+                                <p>Nincs kép feltöltve</p>
+                            </div>
+                        `;
+                        
+                        // Remove delete button
+                        deleteBtn.remove();
+                        
+                        this.showAlert('Kép törölve!', 'success');
+                    } catch (error) {
+                        this.showAlert('Hiba a kép törlésekor: ' + error.message, 'error');
+                        deleteBtn.disabled = false;
+                        deleteBtn.innerHTML = '🗑️ Kép törlése';
+                    }
+                });
+            }
+        }
 
         // Add ingredient button
         document.getElementById('add-ingredient-btn').addEventListener('click', () => {

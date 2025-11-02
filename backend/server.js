@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 const db = require('./config/database');
 const logger = require('./config/logger');
 const mqttClient = require('./config/mqtt');
@@ -36,6 +37,9 @@ app.use(helmet({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined', { stream: logger.stream }));
+
+// Static file serving for uploaded images
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api/ingredients', require('./routes/ingredients'));

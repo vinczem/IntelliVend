@@ -1,5 +1,10 @@
 // API functions
 const API = {
+    baseURL: API_CONFIG.baseURL,
+    staticURL: window.location.hostname === 'localhost' 
+        ? 'http://localhost:3000' 
+        : '',
+    
     async fetch(endpoint, options = {}) {
         const url = `${API_CONFIG.baseURL}${endpoint}`;
         
@@ -50,6 +55,32 @@ const API = {
 
     deleteRecipe(id) {
         return this.fetch(`/recipes/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    async uploadRecipeImage(id, file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const url = `${API_CONFIG.baseURL}/recipes/${id}/image`;
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData
+            // Note: Don't set Content-Type header, let browser set it with boundary
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Image upload failed');
+        }
+        
+        const data = await response.json();
+        return data.image_url;
+    },
+
+    deleteRecipeImage(id) {
+        return this.fetch(`/recipes/${id}/image`, {
             method: 'DELETE'
         });
     },

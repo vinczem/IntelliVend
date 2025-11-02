@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
+const upload = require('../config/upload');
+const path = require('path');
+const fs = require('fs');
 
 // GET all recipes (with filter options)
 router.get('/', (req, res) => {
@@ -287,6 +290,94 @@ router.delete('/:id', (req, res) => {
       return res.status(404).json({ error: 'Recipe not found' });
     }
     res.json({ message: 'Recipe deleted successfully' });
+  });
+});
+
+// POST /api/recipes/:id/image - Upload recipe image
+router.post('/:id/image', upload.single('image'), (req, res) => {
+  const recipeId = req.params.id;
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'No image file provided' });
+  }
+  
+  // Check if recipe exists
+  db.query('SELECT id, image_url FROM recipes WHERE id = ?', [recipeId], (err, results) => {
+    if (err) {
+      // Delete uploaded file on error
+      fs.unlinkSync(req.file.path);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    
+    if (results.length === 0) {
+      // Delete uploaded file if recipe doesn't exist
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ error: 'Recipe not found' });
+    }
+    
+    const oldImageUrl = results[0].image_url;
+    
+    // Delete old image file if exists
+    if (oldImageUrl) {
+      const oldImagePath = path.join(__dirname, '../uploads/recipes', path.basename(oldImageUrl));
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath);
+      }
+    }
+    
+    // Generate URL for the uploaded image
+    const imageUrl = `/uploads/recipes/${req.file.filename}`;
+    
+    // Update database with new image URL
+    db.query('UPDATE recipes SET image_url = ? WHERE id = ?', [imageUrl, recipeId], (err, result) => {
+      if (err) {
+        // Delete uploaded file on error
+        fs.unlinkSync(req.file.path);
+        return res.status(500).json({ error: 'Failed to update recipe', details: err.message });
+      }
+      
+      res.json({
+        message: 'Image uploaded successfully',
+        image_url: imageUrl
+      });
+    });
+  });
+});
+
+// DELETE /api/recipes/:id/image - Delete recipe image
+router.delete('/:id/image', (req, res) => {
+  const recipeId = req.params.id;
+  
+  // Get current image URL
+  db.query('SELECT image_url FROM recipes WHERE id = ?', [recipeId], (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Recipe not found' });
+    }
+    
+    const imageUrl = results[0].image_url;
+    
+    if (!imageUrl) {
+      return res.status(404).json({ error: 'Recipe has no image' });
+    }
+    
+    // Delete image file
+    const imagePath = path.join(__dirname, '../uploads/recipes', path.basename(imageUrl));
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
+    
+    // Update database to remove image URL
+    db.query('UPDATE recipes SET image_url = NULL WHERE id = ?', [recipeId], (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update recipe', details: err.message });
+      }
+      
+      res.json({ message: 'Image deleted successfully' });
+    });
   });
 });
 
