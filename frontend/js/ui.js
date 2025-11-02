@@ -411,6 +411,9 @@ const UI = {
             case 'recipes':
                 this.renderRecipesAdmin(content);
                 break;
+            case 'maintenance':
+                this.renderMaintenanceAdmin(content);
+                break;
         }
     },
 
@@ -1444,6 +1447,330 @@ const UI = {
                         }
                     }
                 }
+            }
+        });
+    },
+
+    // Maintenance Admin
+    async renderMaintenanceAdmin(container) {
+        this.showLoading(container, 'Karbantartási adatok betöltése...');
+        
+        try {
+            // Fetch pumps and maintenance history
+            const pumps = await API.getPumps();
+            const stats = await API.fetch('/maintenance/stats');
+            const history = await API.fetch('/maintenance/history?limit=20');
+
+            container.innerHTML = `
+                <div class="admin-header">
+                    <h3>🔧 Pumpa karbantartás</h3>
+                    <button class="btn-primary" id="btn-flush-all">🌊 Összes pumpa öblítése</button>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🚿</div>
+                        <div class="stat-value">${stats.overall.total_flushes || 0}</div>
+                        <div class="stat-label">Összes öblítés</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⚙️</div>
+                        <div class="stat-value">${stats.overall.total_calibrations || 0}</div>
+                        <div class="stat-label">Kalibrációk</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-value">${((stats.overall.avg_flush_duration_ms || 0) / 1000).toFixed(1)}s</div>
+                        <div class="stat-label">Átlag öblítési idő</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-value">${stats.overall.last_maintenance ? new Date(stats.overall.last_maintenance).toLocaleDateString('hu-HU') : 'Nincs'}</div>
+                        <div class="stat-label">Utolsó karbantartás</div>
+                    </div>
+                </div>
+
+                <!-- Pumps List with Flush Buttons -->
+                <div class="maintenance-section">
+                    <h4>Pumpák öblítése</h4>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Alapanyag</th>
+                                <th>Utolsó karbantartás</th>
+                                <th>Műveletek</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${pumps.map(pump => {
+                                const pumpStat = stats.by_pump.find(s => s.id === pump.id);
+                                const lastMaintenance = pumpStat?.last_maintenance 
+                                    ? new Date(pumpStat.last_maintenance).toLocaleString('hu-HU')
+                                    : 'Soha';
+                                
+                                return `
+                                    <tr>
+                                        <td>#${pump.pump_number}</td>
+                                        <td>${pump.ingredient_name || '-'}</td>
+                                        <td><small>${lastMaintenance}</small></td>
+                                        <td class="action-buttons">
+                                            <button class="btn-flush" data-pump-id="${pump.id}" data-pump-number="${pump.pump_number}" data-ingredient="${pump.ingredient_name}">
+                                                🚿 Öblítés
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Maintenance History -->
+                <div class="maintenance-section">
+                    <h4>Karbantartási előzmények</h4>
+                    ${history.logs.length === 0 ? `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📋</div>
+                            <div class="empty-state-message">Még nincs karbantartási előzmény</div>
+                        </div>
+                    ` : `
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Dátum</th>
+                                    <th>Pumpa</th>
+                                    <th>Művelet</th>
+                                    <th>Időtartam</th>
+                                    <th>Megjegyzés</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${history.logs.map(log => `
+                                    <tr>
+                                        <td><small>${new Date(log.performed_at).toLocaleString('hu-HU')}</small></td>
+                                        <td>#${log.pump_number} ${log.ingredient_name || '-'}</td>
+                                        <td>
+                                            <span class="badge badge-${log.action_type}">
+                                                ${log.action_type === 'flush' ? '🚿 Öblítés' : 
+                                                  log.action_type === 'calibration' ? '⚙️ Kalibráció' : 
+                                                  log.action_type === 'repair' ? '🔧 Javítás' : '📝 Egyéb'}
+                                            </span>
+                                        </td>
+                                        <td>${log.duration_ms ? (log.duration_ms / 1000).toFixed(1) + 's' : '-'}</td>
+                                        <td><small>${log.notes || '-'}</small></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `}
+                </div>
+            `;
+
+            // Event listeners
+            document.getElementById('btn-flush-all').addEventListener('click', () => {
+                this.showFlushModal('all');
+            });
+
+            document.querySelectorAll('.btn-flush').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const pumpId = e.target.dataset.pumpId;
+                    const pumpNumber = e.target.dataset.pumpNumber;
+                    const ingredientName = e.target.dataset.ingredient;
+                    this.showFlushModal(pumpId, pumpNumber, ingredientName);
+                });
+            });
+
+        } catch (error) {
+            this.showEmptyState(container, {
+                icon: '❌',
+                title: 'Hiba történt',
+                message: error.message,
+                action: {
+                    text: '🔄 Újrapróbálás',
+                    callback: () => this.showAdminTab('maintenance')
+                }
+            });
+        }
+    },
+
+    showFlushModal(pumpId, pumpNumber, ingredientName) {
+        const isBulk = pumpId === 'all';
+        const title = isBulk ? 'Összes pumpa öblítése' : `Pumpa #${pumpNumber}`;
+        const subtitle = isBulk ? 'Minden aktív pumpa' : ingredientName || 'Nincs hozzárendelve';
+
+        const modalHtml = `
+            <div class="modal-overlay" id="flush-modal">
+                <div class="modal-dialog flush-modal-dialog">
+                    <div class="modal-header flush-modal-header">
+                        <div class="flush-title-wrapper">
+                            <div class="flush-icon">🚿</div>
+                            <div class="flush-title-text">
+                                <h3>${title}</h3>
+                                <p class="flush-subtitle">${subtitle}</p>
+                            </div>
+                        </div>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="flush-steps">
+                            <div class="flush-step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h5>Cső átrakása</h5>
+                                    <p>Rakd át a ${isBulk ? 'csöveket' : 'csövet'} egy tiszta vizes tartályba!</p>
+                                </div>
+                            </div>
+                            <div class="flush-step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h5>Edény elhelyezése</h5>
+                                    <p>Helyezz ${isBulk ? 'edényeket' : 'poharat'} a kifolyó alá!</p>
+                                </div>
+                            </div>
+                            <div class="flush-step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h5>Indítás</h5>
+                                    <p>Állítsd be az időtartamot és indítsd el az öblítést!</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flush-duration-control">
+                            <label for="flush-duration">
+                                <span class="duration-icon">⏱️</span>
+                                Öblítési időtartam
+                            </label>
+                            <div class="duration-display">
+                                <span id="duration-value" class="duration-number">5</span>
+                                <span class="duration-unit">másodperc</span>
+                            </div>
+                            <input type="range" id="flush-duration" min="3" max="30" value="5" step="1" class="flush-slider">
+                            <div class="slider-labels">
+                                <span>3s</span>
+                                <span>15s</span>
+                                <span>30s</span>
+                            </div>
+                        </div>
+
+                        <div id="flush-progress" class="flush-progress" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="flush-progress-bar"></div>
+                            </div>
+                            <div class="progress-text">
+                                <span id="flush-status">💧 Öblítés folyamatban...</span>
+                                <span id="flush-time-remaining">5s</span>
+                            </div>
+                        </div>
+
+                        <div id="flush-complete" class="flush-complete" style="display: none;">
+                            <div class="success-icon">✅</div>
+                            <h4>Öblítés sikeresen befejezve!</h4>
+                            <div class="flush-reminder">
+                                <div class="reminder-icon">⚠️</div>
+                                <p>Ne felejtsd el visszarakni a ${isBulk ? 'csöveket az eredeti üvegekbe' : 'csövet a ' + (ingredientName || 'pumpa') + ' üvegébe'}!</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-secondary" id="btn-cancel-flush">Mégse</button>
+                        <button class="btn-primary" id="btn-start-flush">
+                            <span class="btn-icon">▶️</span>
+                            Öblítés indítása
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const modal = document.getElementById('flush-modal');
+        const durationSlider = document.getElementById('flush-duration');
+        const durationValue = document.getElementById('duration-value');
+        const startButton = document.getElementById('btn-start-flush');
+        const cancelButton = document.getElementById('btn-cancel-flush');
+        const progressDiv = document.getElementById('flush-progress');
+        const completeDiv = document.getElementById('flush-complete');
+
+        // Slider update
+        durationSlider.addEventListener('input', (e) => {
+            durationValue.textContent = e.target.value;
+        });
+
+        // Cancel button
+        const closeModal = () => {
+            modal.remove();
+        };
+        
+        cancelButton.addEventListener('click', closeModal);
+        modal.querySelector('.modal-close').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+
+        // Start flush button
+        startButton.addEventListener('click', async () => {
+            const durationSeconds = parseInt(durationSlider.value);
+            const durationMs = durationSeconds * 1000;
+
+            // Hide button, show progress
+            startButton.style.display = 'none';
+            cancelButton.disabled = true;
+            durationSlider.disabled = true;
+            progressDiv.style.display = 'block';
+
+            const progressBar = document.getElementById('flush-progress-bar');
+            const statusText = document.getElementById('flush-status');
+            const timeRemaining = document.getElementById('flush-time-remaining');
+
+            // Start flush via API
+            try {
+                const endpoint = isBulk 
+                    ? '/maintenance/flush-all'
+                    : `/maintenance/flush/${pumpId}`;
+                
+                const response = await API.fetch(endpoint, {
+                    method: 'POST',
+                    body: JSON.stringify({ duration_ms: durationMs, notes: 'Kézzel indított öblítés az admin panelről' })
+                });
+
+                if (!response.success) {
+                    throw new Error('Flush failed');
+                }
+
+                // Animate progress bar
+                const startTime = Date.now();
+                const updateProgress = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min((elapsed / durationMs) * 100, 100);
+                    const remaining = Math.max(durationSeconds - Math.floor(elapsed / 1000), 0);
+
+                    progressBar.style.width = progress + '%';
+                    timeRemaining.textContent = remaining + 's';
+
+                    if (progress < 100) {
+                        requestAnimationFrame(updateProgress);
+                    } else {
+                        // Flush complete
+                        progressDiv.style.display = 'none';
+                        completeDiv.style.display = 'block';
+                        cancelButton.textContent = 'Bezár';
+                        cancelButton.disabled = false;
+                        
+                        this.showAlert(isBulk ? 'Összes pumpa öblítve!' : `Pumpa #${pumpNumber} öblítve!`, 'success');
+                    }
+                };
+
+                updateProgress();
+
+            } catch (error) {
+                statusText.textContent = '❌ Hiba történt!';
+                this.showAlert('Öblítési hiba: ' + error.message, 'error');
+                cancelButton.disabled = false;
+                cancelButton.textContent = 'Bezár';
             }
         });
     }

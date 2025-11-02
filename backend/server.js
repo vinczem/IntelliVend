@@ -37,6 +37,11 @@ app.use('/api/alerts', require('./routes/alerts'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/email', require('./routes/email'));
 
+// Maintenance routes with MQTT client injection
+const maintenanceRoutes = require('./routes/maintenance');
+maintenanceRoutes.setMqttClient(mqttClient);
+app.use('/api/maintenance', maintenanceRoutes);
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   db.query('SELECT 1', (err) => {
@@ -62,6 +67,8 @@ app.get('/', (req, res) => {
       dispense: '/api/dispense',
       alerts: '/api/alerts',
       stats: '/api/stats',
+      email: '/api/email',
+      maintenance: '/api/maintenance',
       health: '/health'
     }
   });
@@ -88,7 +95,7 @@ const server = app.listen(PORT, () => {
   logger.info(`MQTT: ${mqttClient.isConnected() ? 'Connected' : 'Disabled'}`);
   
   // Create email_notifications table if it doesn't exist
-  const createTableQuery = `
+  const createEmailTableQuery = `
     CREATE TABLE IF NOT EXISTS email_notifications (
       id INT PRIMARY KEY AUTO_INCREMENT,
       alert_id INT NOT NULL,
@@ -102,11 +109,35 @@ const server = app.listen(PORT, () => {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `;
   
-  db.query(createTableQuery, (err) => {
+  db.query(createEmailTableQuery, (err) => {
     if (err) {
       logger.error('Error creating email_notifications table:', err);
     } else {
       logger.info('📧 Email notifications table ready');
+    }
+  });
+  
+  // Create maintenance_log table if it doesn't exist
+  const createMaintenanceTableQuery = `
+    CREATE TABLE IF NOT EXISTS maintenance_log (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      pump_id INT NOT NULL,
+      action_type ENUM('flush', 'calibration', 'repair', 'other') NOT NULL DEFAULT 'flush',
+      duration_ms INT DEFAULT NULL COMMENT 'Duration in milliseconds (for flush/calibration)',
+      notes TEXT DEFAULT NULL COMMENT 'Additional notes or error messages',
+      performed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (pump_id) REFERENCES pumps(id) ON DELETE CASCADE,
+      INDEX idx_pump_id (pump_id),
+      INDEX idx_performed_at (performed_at),
+      INDEX idx_action_type (action_type)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `;
+  
+  db.query(createMaintenanceTableQuery, (err) => {
+    if (err) {
+      logger.error('Error creating maintenance_log table:', err);
+    } else {
+      logger.info('🔧 Maintenance log table ready');
     }
   });
 });
