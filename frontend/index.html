@@ -63,7 +63,7 @@
 
             <!-- Admin View -->
             <div id="admin-view" class="view">
-                <h2>panel</h2>
+                <h2>Admin panel</h2>
                 
                 <div class="admin-tabs">
                     <button class="tab-btn active" data-tab="ingredients">Alapanyagok</button>
@@ -89,7 +89,18 @@
 
             <!-- Stats View -->
             <div id="stats-view" class="view">
-                <h2>Statisztikák és elemzések</h2>
+                <div class="stats-header">
+                    <h2>Statisztikák és elemzések</h2>
+                    <div class="stats-period-selector">
+                        <label for="stats-period">Időszak:</label>
+                        <select id="stats-period">
+                            <option value="7">Utolsó 7 nap</option>
+                            <option value="14">Utolsó 14 nap</option>
+                            <option value="30" selected>Utolsó 30 nap</option>
+                            <option value="90">Utolsó 90 nap</option>
+                        </select>
+                    </div>
+                </div>
                 
                 <!-- Summary Cards -->
                 <div id="stats-cards" class="stats-cards">
@@ -118,7 +129,7 @@
                 <!-- Charts -->
                 <div class="stats-charts">
                     <div class="chart-container">
-                        <h3>Napi fogyasztás (utolsó 7 nap)</h3>
+                        <h3 id="daily-chart-title">Napi fogyasztás (utolsó 30 nap)</h3>
                         <canvas id="dailyConsumptionChart"></canvas>
                     </div>
                     

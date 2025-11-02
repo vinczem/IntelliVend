@@ -220,7 +220,7 @@ const UI = {
             this.showEmptyState(list, {
                 icon: '📦',
                 title: 'Nincs készlet adat',
-                message: 'Jelenleg nincsenek készlet adatok. Ellenőrizze, hogy a pumpák megfelelően vannak-e konfigurálva.'
+                message: 'Jelenleg nincsenek készlet adatok. Ellenőrizd, hogy a pumpák megfelelően vannak-e konfigurálva.'
             });
             return;
         }
@@ -596,7 +596,6 @@ const UI = {
             container.innerHTML = `
                 <div class="admin-header">
                     <h3>Pumpa kezelés</h3>
-                    <p class="admin-subtitle">Alapanyagok hozzárendelése és kalibráció</p>
                 </div>
                 
                 <table class="admin-table pumps-table">
@@ -700,7 +699,7 @@ const UI = {
                         </div>
                         
                         <div class="form-info">
-                            <p><strong>Tipp:</strong> A kezdő mennyiség általában megegyezik a palack mérettel, 
+                            <p><strong>Tipp:</strong> A kezdő mennyiség megegyezik a palack mérettel, 
                             kivéve ha a palack már részben üres.</p>
                         </div>
                         
@@ -1162,7 +1161,7 @@ const UI = {
     },
 
     // Statistics
-    async renderStats() {
+    async renderStats(days = 30) {
         try {
             // Get stats cards container
             const statsCards = document.getElementById('stats-cards');
@@ -1176,7 +1175,7 @@ const UI = {
             
             // Fetch stats data
             const stats = await API.fetch('/stats');
-            const dailyStats = await API.fetch('/stats/daily?days=7');
+            const dailyStats = await API.fetch(`/stats/daily?days=${days}`);
 
             // Clear loading and render cards with icons
             statsCards.innerHTML = `
@@ -1201,6 +1200,12 @@ const UI = {
                     <div class="stat-label">Alacsony készlet</div>
                 </div>
             `;
+
+            // Update chart title
+            const chartTitle = document.getElementById('daily-chart-title');
+            if (chartTitle) {
+                chartTitle.textContent = `Napi fogyasztás (utolsó ${days} nap)`;
+            }
 
             // Render charts
             this.renderDailyConsumptionChart(dailyStats);

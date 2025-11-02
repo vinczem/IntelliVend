@@ -141,7 +141,21 @@ async function loadInventory() {
 }
 
 async function loadStats() {
-    UI.renderStats();
+    // Get selected period
+    const periodSelector = document.getElementById('stats-period');
+    const days = periodSelector ? parseInt(periodSelector.value) : 30;
+    
+    // Render stats with selected period
+    UI.renderStats(days);
+    
+    // Add change event listener if not already added
+    if (periodSelector && !periodSelector.dataset.listenerAdded) {
+        periodSelector.addEventListener('change', () => {
+            const newDays = parseInt(periodSelector.value);
+            UI.renderStats(newDays);
+        });
+        periodSelector.dataset.listenerAdded = 'true';
+    }
 }
 
 async function loadAdminData() {

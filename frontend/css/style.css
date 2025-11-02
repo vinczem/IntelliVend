@@ -1009,6 +1009,52 @@ footer {
 }
 
 /* Statistics Dashboard */
+.stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.stats-header h2 {
+    margin: 0;
+}
+
+.stats-period-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stats-period-selector label {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95em;
+}
+
+.stats-period-selector select {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background: var(--card-background);
+    color: var(--text-primary);
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.stats-period-selector select:hover {
+    border-color: var(--primary-color);
+}
+
+.stats-period-selector select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
 .stats-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1085,6 +1131,12 @@ footer {
     justify-content: center;
     padding: 60px 20px;
     gap: 20px;
+}
+
+/* Fix loading spinner centering in grid containers */
+.drinks-grid .loading-container,
+.drinks-grid .empty-state {
+    grid-column: 1 / -1;
 }
 
 .spinner {
