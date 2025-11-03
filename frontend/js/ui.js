@@ -226,6 +226,10 @@ const UI = {
         const statusText = document.getElementById('dispense-status');
         const dispenseBtn = document.getElementById('btn-dispense');
         
+        // Timeout for dispense operation (60 seconds)
+        let timeoutId = null;
+        let logId = null;
+        
         try {
             // Get selected strength
             const strengthSelector = document.getElementById('strength-selector');
@@ -240,13 +244,53 @@ const UI = {
             statusText.textContent = 'Készítés indítása...';
             
             const result = await API.dispenseDrink(recipeId, strength);
+            logId = result.log_id; // Store log_id for timeout reporting
             
             statusText.textContent = 'Ital készítése folyamatban...';
+            
+            // Set timeout for dispense operation (60 seconds)
+            const self = this; // Preserve 'this' context for timeout callback
+            timeoutId = setTimeout(async () => {
+                // Report timeout to backend (creates alert & sends email)
+                if (logId) {
+                    try {
+                        await API.reportDispenseTimeout(logId);
+                        console.log('✅ Timeout reported to backend, alert created');
+                    } catch (error) {
+                        console.error('❌ Failed to report timeout:', error);
+                    }
+                }
+                
+                // Close modal
+                const modal = document.getElementById('dispense-modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+                
+                // Show error
+                self.showAlert('⏱️ Időtúllépés! Az ESP32 nem válaszol. Riasztás elküldve!', 'error');
+                
+                // Reset UI
+                progressDiv.classList.add('hidden');
+                dispenseBtn.disabled = false;
+                
+                // Clear the timeout ID
+                window.dispenseTimeoutId = null;
+            }, 60000); // 60 seconds timeout
+            
+            // Store timeout ID globally so websocket.js can clear it
+            window.dispenseTimeoutId = timeoutId;
             
             // WebSocket will handle progress updates and completion
             // Modal will be closed by websocket.js when dispense:complete arrives
             
         } catch (error) {
+            // Clear timeout on error
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+                window.dispenseTimeoutId = null;
+            }
+            
             this.showAlert('Hiba az ital készítésekor: ' + error.message, 'error');
             progressDiv.classList.add('hidden');
             dispenseBtn.disabled = false;

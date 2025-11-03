@@ -178,6 +178,12 @@ const API = {
         });
     },
 
+    reportDispenseTimeout(logId) {
+        return this.fetch(`/dispense/timeout/${logId}`, {
+            method: 'POST'
+        });
+    },
+
     getDispenseHistory(limit = 50) {
         return this.fetch(`/dispense/history?limit=${limit}`);
     },

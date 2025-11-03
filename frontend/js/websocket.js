@@ -174,6 +174,12 @@ document.addEventListener('DOMContentLoaded', () => {
   wsClient.on('dispense:complete', (data) => {
     console.log('✅ Dispense complete:', data);
     
+    // Clear timeout if active
+    if (window.dispenseTimeoutId) {
+      clearTimeout(window.dispenseTimeoutId);
+      window.dispenseTimeoutId = null;
+    }
+    
     // Hide progress container
     const progressContainer = document.getElementById('dispense-progress');
     if (progressContainer) {
@@ -225,6 +231,24 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Example: Show error notifications
   wsClient.on('esp32:error', (data) => {
+    // Clear timeout if active
+    if (window.dispenseTimeoutId) {
+      clearTimeout(window.dispenseTimeoutId);
+      window.dispenseTimeoutId = null;
+    }
+    
+    // Hide progress and re-enable button
+    const progressContainer = document.getElementById('dispense-progress');
+    if (progressContainer) {
+      progressContainer.classList.add('hidden');
+    }
+    
+    const dispenseBtn = document.getElementById('btn-dispense');
+    if (dispenseBtn) {
+      dispenseBtn.disabled = false;
+      dispenseBtn.textContent = 'Kérek egy ilyet!';
+    }
+    
     if (typeof UI !== 'undefined' && UI.showAlert) {
       UI.showAlert(`${data.message}`, 'error');
     }

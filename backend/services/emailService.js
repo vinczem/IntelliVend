@@ -31,7 +31,7 @@ class EmailService {
      * Send low stock alert email
      */
     async sendLowStockAlert(alert) {
-        const subject = `⚠️ IntelliVend - Alacsony készlet riasztás`;
+        const subject = `IntelliVend - Alacsony készlet riasztás`;
         const html = this.getLowStockEmailTemplate(alert);
 
         return this.sendEmail(subject, html);
@@ -41,7 +41,7 @@ class EmailService {
      * Send empty bottle alert email
      */
     async sendEmptyBottleAlert(alert) {
-        const subject = `🔴 IntelliVend - Üres palack riasztás`;
+        const subject = `IntelliVend - Üres palack riasztás`;
         const html = this.getEmptyBottleEmailTemplate(alert);
 
         return this.sendEmail(subject, html);
@@ -51,8 +51,18 @@ class EmailService {
      * Send critical alert summary (multiple alerts)
      */
     async sendAlertSummary(alerts) {
-        const subject = `🚨 IntelliVend - Riasztás összefoglaló (${alerts.length} db)`;
+        const subject = `IntelliVend - Riasztás összefoglaló (${alerts.length} db)`;
         const html = this.getAlertSummaryTemplate(alerts);
+
+        return this.sendEmail(subject, html);
+    }
+
+    /**
+     * Send system error alert (ESP32 timeout, connection issues)
+     */
+    async sendSystemErrorAlert(alert) {
+        const subject = `IntelliVend - Rendszerhiba: ESP32 kapcsolat`;
+        const html = this.getSystemErrorTemplate(alert);
 
         return this.sendEmail(subject, html);
     }
@@ -521,6 +531,187 @@ class EmailService {
     </div>
     <div class="footer">
         <p>Ez egy automatikus összefoglaló email az IntelliVend rendszerből.</p>
+        <p>IntelliVend - Intelligent Vending Machine System</p>
+    </div>
+</body>
+</html>
+        `;
+    }
+
+    /**
+     * System error email template (ESP32 timeout/connection issues)
+     */
+    getSystemErrorTemplate(alert) {
+        const formattedDate = new Date(alert.created_at).toLocaleString('hu-HU', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        return `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 30px;
+            border-radius: 10px 10px 0 0;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .alert-box {
+            background: white;
+            border-left: 4px solid #e74c3c;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .alert-icon {
+            font-size: 64px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .alert-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .alert-message {
+            background: #fee;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-size: 16px;
+            text-align: center;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .label {
+            font-weight: bold;
+            color: #666;
+        }
+        .value {
+            color: #333;
+        }
+        .action-button {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .action-button:hover {
+            background: #c0392b;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #777;
+            font-size: 12px;
+        }
+        .troubleshooting {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .troubleshooting h4 {
+            margin-top: 0;
+            color: #856404;
+        }
+        .troubleshooting ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .troubleshooting li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚨 RENDSZERHIBA - ESP32 Kapcsolat</h1>
+        <p style="margin: 10px 0 0 0;">IntelliVend riasztás</p>
+    </div>
+    <div class="content">
+        <div class="alert-box">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-title">az ESP32 nem válaszol</div>
+            <div class="alert-message">
+                ${alert.message}
+            </div>
+            <div style="margin-top: 20px;">
+                <div class="detail-row">
+                    <span class="label">⏰ Időpont:</span>
+                    <span class="value">${formattedDate}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">🔴 Súlyosság:</span>
+                    <span class="value" style="color: #e74c3c; font-weight: bold;">MAGAS</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">📋 Típus:</span>
+                    <span class="value">Rendszerhiba</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="troubleshooting">
+            <h4>🔧 Hibaelhárítási lépések:</h4>
+            <ul>
+                <li><strong>1. Ellenőrizd az ESP32 tápellátását</strong> - Világít-e a beépített LED?</li>
+                <li><strong>2. WiFi kapcsolat</strong> - Csatlakozik-e az ESP32 a hálózathoz?</li>
+                <li><strong>3. MQTT broker</strong> - Fut-e az MQTT szerver?</li>
+                <li><strong>4. ESP32 újraindítása</strong> - Próbáld meg újraindítani az ESP32-t</li>
+                <li><strong>5. Soros konzol</strong> - Nézd meg a debug kimeneteket (115200 baud)</li>
+            </ul>
+        </div>
+
+        <p><strong>⚡ Azonnali teendő:</strong> Az ital készítése megszakadt. Az ESP32 hardvert azonnal ellenőrizni kell!</p>
+        
+        <center>
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:8080'}" class="action-button">
+                🔗 IntelliVend megnyitása
+            </a>
+        </center>
+    </div>
+    <div class="footer">
+        <p>Ez egy automatikus riasztás email az IntelliVend rendszerből.</p>
         <p>IntelliVend - Intelligent Vending Machine System</p>
     </div>
 </body>

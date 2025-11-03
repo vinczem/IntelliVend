@@ -492,4 +492,76 @@ async function sendAlertEmail(alert, skipThrottling = false) {
   }
 }
 
+// POST report dispense timeout (when ESP32 doesn't respond)
+router.post('/timeout/:log_id', async (req, res) => {
+  const { log_id } = req.params;
+  
+  try {
+    // Update dispensing log status to failed
+    await dbQueryPromise(
+      'UPDATE dispensing_log SET status = ?, error_message = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?',
+      ['failed', 'ESP32 timeout - no response within 60 seconds', log_id]
+    );
+    
+    // Get recipe name for alert
+    const logInfo = await dbQueryPromise(
+      'SELECT recipe_name FROM dispensing_log WHERE id = ?',
+      [log_id]
+    );
+    
+    const recipeName = logInfo.length > 0 ? logInfo[0].recipe_name : 'Unknown';
+    
+    // Create alert
+    const alertResult = await dbQueryPromise(
+      `INSERT INTO alerts (type, severity, message, is_resolved) 
+       VALUES (?, ?, ?, ?)`,
+      [
+        'system_error',
+        'critical',
+        `ESP32 nem válaszol! Adagolás megszakítva: ${recipeName} (Log ID: ${log_id})`,
+        0
+      ]
+    );
+    
+    logger.warn(`ESP32 timeout reported for log_id: ${log_id}`);
+    
+    // Send email notification (non-blocking)
+    setImmediate(async () => {
+      try {
+        const alert = {
+          id: alertResult.insertId,
+          type: 'system_error',
+          severity: 'critical',
+          message: `ESP32 nem válaszol! Adagolás megszakítva: ${recipeName} (Log ID: ${log_id})`,
+          created_at: new Date()
+        };
+        
+        const emailResult = await emailService.sendSystemErrorAlert(alert);
+        
+        // Log email notification
+        const status = emailResult.success ? 'sent' : 'failed';
+        const errorMessage = emailResult.success ? null : emailResult.error;
+        
+        await dbQueryPromise(
+          `INSERT INTO email_notifications (alert_id, email_type, recipient_email, status, error_message)
+           VALUES (?, ?, ?, ?, ?)`,
+          [alert.id, 'system_error', process.env.ALERT_EMAIL, status, errorMessage]
+        );
+        
+      } catch (emailError) {
+        logger.error('Error sending timeout alert email:', emailError);
+      }
+    });
+    
+    res.json({ 
+      message: 'Timeout reported and alert created',
+      alert_id: alertResult.insertId 
+    });
+    
+  } catch (error) {
+    logger.error('Error reporting timeout:', error);
+    res.status(500).json({ error: 'Failed to report timeout', details: error.message });
+  }
+});
+
 module.exports = router;
