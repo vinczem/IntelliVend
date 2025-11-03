@@ -76,7 +76,7 @@ class ESP32Mock:
         """MQTT kapcsolódás esemény (Callback API v2)"""
         if reason_code == 0 or (hasattr(reason_code, 'value') and reason_code.value == 0):
             self.connected = True
-            print(f"✅ [ESP32] Connected to MQTT broker {self.broker}:{self.port}")
+            print(f"[ESP32] Connected to MQTT broker {self.broker}:{self.port}")
             
             # Subscribe to command topics
             topics = [
@@ -88,24 +88,24 @@ class ESP32Mock:
             
             for topic, qos in topics:
                 client.subscribe(topic, qos)
-                print(f"📡 [ESP32] Subscribed to: {topic} (QoS {qos})")
+                print(f"[ESP32] Subscribed to: {topic} (QoS {qos})")
             
             # Start heartbeat thread (only once)
             if self.heartbeat_thread is None or not self.heartbeat_thread.is_alive():
                 self.heartbeat_thread = threading.Thread(target=self.heartbeat_loop, daemon=True)
                 self.heartbeat_thread.start()
-                print("💓 [ESP32] Heartbeat thread started")
+                print(f"[ESP32] Heartbeat thread started")
             
         else:
             rc_val = reason_code.value if hasattr(reason_code, 'value') else reason_code
-            print(f"❌ [ESP32] Connection failed with code {rc_val}")
+            print(f"[ESP32] Connection failed with code {rc_val}")
     
     def on_disconnect(self, client, userdata, flags, reason_code, properties):
         """MQTT kapcsolat megszakadás (Callback API v2)"""
         self.connected = False
         rc_val = reason_code.value if hasattr(reason_code, 'value') else reason_code
         if rc_val != 0:
-            print(f"⚠️  [ESP32] Unexpected disconnect (code {rc_val}), reconnecting...")
+            print(f"[ESP32] Unexpected disconnect (code {rc_val}), reconnecting...")
     
     def on_message(self, client, userdata, msg):
         """MQTT üzenet fogadása"""
@@ -113,7 +113,7 @@ class ESP32Mock:
             topic = msg.topic
             payload = json.loads(msg.payload.decode())
             
-            print(f"\n📨 [ESP32] Received on {topic}:")
+            print(f"\n[ESP32] Received on {topic}:")
             print(f"   {json.dumps(payload, indent=3)}")
             
             # Route to appropriate handler
@@ -127,9 +127,9 @@ class ESP32Mock:
                 self.handle_emergency_stop(payload)
                 
         except json.JSONDecodeError as e:
-            print(f"❌ [ESP32] Invalid JSON: {e}")
+            print(f"[ESP32] Invalid JSON: {e}")
         except Exception as e:
-            print(f"❌ [ESP32] Error handling message: {e}")
+            print(f"[ESP32] Error handling message: {e}")
     
     def handle_dispense_command(self, payload: Dict):
         """Dispense parancs kezelése - támogatja mind az egyszerű, mind a komplex formátumot"""
@@ -145,7 +145,7 @@ class ESP32Mock:
         
         # Handle complex multi-pump dispense (amount_ml is array)
         if isinstance(amount_ml, list):
-            print(f"🥤 [ESP32] Multi-pump recipe: {recipe_name or 'Unknown'}")
+            print(f"[ESP32] Multi-pump recipe: {recipe_name or 'Unknown'}")
             # Calculate total amount and duration
             total_ml = sum(item.get("quantity_ml", 0) for item in amount_ml)
             if duration_ms is None:
@@ -159,7 +159,7 @@ class ESP32Mock:
                 self.publish_error(pump_id, error_code, f"Simulated error: {error_code}", "critical")
                 return
             
-            print(f"🚀 [ESP32] Starting multi-pump dispense: {len(amount_ml)} ingredients, {total_ml}ml total")
+            print(f"[ESP32] Starting multi-pump dispense: {len(amount_ml)} ingredients, {total_ml}ml total")
             
             # Run dispense in separate thread
             thread = threading.Thread(
@@ -183,7 +183,7 @@ class ESP32Mock:
                 self.publish_error(pump_id, error_code, f"Simulated error: {error_code}", "critical")
                 return
             
-            print(f"🚀 [ESP32] Starting dispense: Pump {pump_id}, {amount_ml}ml, {duration_ms}ms")
+            print(f"[ESP32] Starting dispense: Pump {pump_id}, {amount_ml}ml, {duration_ms}ms")
             
             # Run dispense in separate thread
             thread = threading.Thread(
@@ -205,7 +205,7 @@ class ESP32Mock:
         
         for i in range(steps + 1):
             if self.stop_event.is_set():
-                print(f"🛑 [ESP32] Dispense stopped (emergency)")
+                print(f"[ESP32] Dispense stopped (emergency)")
                 self.publish_error(pump_id, "EMERGENCY_STOP", "Emergency stop triggered", "warning")
                 self.pumps_active -= 1
                 return
@@ -232,7 +232,7 @@ class ESP32Mock:
             }
             
             self.client.publish("intellivend/status", json.dumps(status), qos=0)
-            print(f"📊 [ESP32] Status: {current_ml:.1f}/{amount_ml}ml ({progress*100:.0f}%)")
+            print(f"[ESP32] Status: {current_ml:.1f}/{amount_ml}ml ({progress*100:.0f}%)")
             
             if i < steps:
                 time.sleep(0.5)
@@ -252,7 +252,7 @@ class ESP32Mock:
         }
         
         self.client.publish("intellivend/dispense/complete", json.dumps(complete), qos=1)
-        print(f"✅ [ESP32] Dispense complete: {actual_ml}ml dispensed")
+        print(f"[ESP32] Dispense complete: {actual_ml}ml dispensed")
         
         self.pumps_active -= 1
     
@@ -267,10 +267,10 @@ class ESP32Mock:
         
         # Check if bulk flush (pump_id = -1)
         if pump_id == -1:
-            print(f"🌊 [ESP32] Starting BULK FLUSH (all pumps), {duration_ms}ms")
+            print(f"[ESP32] Starting BULK FLUSH (all pumps), {duration_ms}ms")
             pump_ids = list(range(1, 9))  # 8 pumps
         else:
-            print(f"🚿 [ESP32] Starting flush: Pump {pump_id}, {duration_ms}ms")
+            print(f"[ESP32] Starting flush: Pump {pump_id}, {duration_ms}ms")
             pump_ids = [pump_id]
         
         # Run flush in separate thread
@@ -300,7 +300,7 @@ class ESP32Mock:
             }
             
             self.client.publish("intellivend/maintenance/complete", json.dumps(complete), qos=1)
-            print(f"✅ [ESP32] Flush complete: Pump {pump_id}")
+            print(f"[ESP32] Flush complete: Pump {pump_id}")
         
         self.pumps_active -= len(pump_ids)
     
@@ -310,7 +310,7 @@ class ESP32Mock:
         test_amount_ml = payload.get("test_amount_ml", 50.0)
         timeout_ms = payload.get("timeout_ms", 30000)
         
-        print(f"🔧 [ESP32] Starting calibration: Pump {pump_id}, {test_amount_ml}ml")
+        print(f"[ESP32] Starting calibration: Pump {pump_id}, {test_amount_ml}ml")
         
         # Run calibration in separate thread
         thread = threading.Thread(
@@ -339,14 +339,14 @@ class ESP32Mock:
         }
         
         self.client.publish("intellivend/maintenance/complete", json.dumps(complete), qos=1)
-        print(f"✅ [ESP32] Calibration complete: Pump {pump_id}, {complete['ml_per_second']} ml/s")
+        print(f"[ESP32] Calibration complete: Pump {pump_id}, {complete['ml_per_second']} ml/s")
         
         self.pumps_active -= 1
     
     def handle_emergency_stop(self, payload: Dict):
         """Emergency stop kezelése"""
         reason = payload.get("reason", "Unknown")
-        print(f"🛑 [ESP32] EMERGENCY STOP: {reason}")
+        print(f"[ESP32] EMERGENCY STOP: {reason}")
         
         # Stop all operations
         self.stop_event.set()
@@ -358,7 +358,7 @@ class ESP32Mock:
         # Reset after 2 seconds
         time.sleep(2)
         self.stop_event.clear()
-        print("✅ [ESP32] Emergency stop cleared, ready for new commands")
+        print(f"[ESP32] Emergency stop cleared, ready for new commands")
     
     def publish_error(self, pump_id: int, error_code: str, message: str, severity: str):
         """Hiba publikálása"""
@@ -375,7 +375,7 @@ class ESP32Mock:
         }
         
         self.client.publish("intellivend/error", json.dumps(error), qos=1)
-        print(f"❌ [ESP32] Error published: {error_code} - {message}")
+        print(f"[ESP32] Error published: {error_code} - {message}")
     
     def heartbeat_loop(self):
         """Heartbeat küldés 10 másodpercenként"""
@@ -401,14 +401,14 @@ class ESP32Mock:
                 }
                 
                 self.client.publish("intellivend/heartbeat", json.dumps(heartbeat), qos=0, retain=False)
-                print(f"💓 [ESP32] Heartbeat sent (uptime: {uptime_ms/1000:.0f}s, WiFi: {wifi_rssi}dBm)")
+                print(f"[ESP32] Heartbeat sent (uptime: {uptime_ms/1000:.0f}s, WiFi: {wifi_rssi}dBm)")
             
             time.sleep(10)
     
     def run(self):
         """Mock client futtatása"""
         print("=" * 60)
-        print("🤖 IntelliVend ESP32 Mock Client")
+        print("IntelliVend ESP32 Mock Client")
         print("=" * 60)
         print(f"Broker: {self.broker}:{self.port}")
         if self.username:
@@ -422,12 +422,12 @@ class ESP32Mock:
             self.client.connect(self.broker, self.port, keepalive=120)
             self.client.loop_forever()
         except KeyboardInterrupt:
-            print("\n\n🛑 [ESP32] Shutting down...")
+            print("\n\n[ESP32] Shutting down...")
             self.stop_event.set()
             self.client.disconnect()
-            print("👋 [ESP32] Goodbye!")
+            print("[ESP32] Goodbye!")
         except Exception as e:
-            print(f"❌ [ESP32] Fatal error: {e}")
+            print(f"[ESP32] Fatal error: {e}")
 
 def main():
     """CLI entry point"""
@@ -486,7 +486,7 @@ Példák:
     
     # Validate error rate
     if not 0.0 <= args.error_rate <= 1.0:
-        print("❌ Error rate must be between 0.0 and 1.0")
+        print("Error rate must be between 0.0 and 1.0")
         return 1
     
     # Create and run mock client

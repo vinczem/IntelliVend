@@ -1436,6 +1436,7 @@ const UI = {
             // Fetch stats data
             const stats = await API.fetch('/stats');
             const dailyStats = await API.fetch(`/stats/daily?days=${days}`);
+            const costStats = await API.fetch(`/stats/costs?days=${days}`);
 
             // Clear loading and render cards with icons
             statsCards.innerHTML = `
@@ -1461,10 +1462,16 @@ const UI = {
                 </div>
             `;
 
+            // Render cost analytics section
+            this.renderCostAnalytics(costStats, days);
+
             // Update chart title
             const chartTitle = document.getElementById('daily-chart-title');
             if (chartTitle) {
-                chartTitle.textContent = `Napi fogyasztás (utolsó ${days} nap)`;
+                const titleText = days === 1 
+                    ? 'Napi fogyasztás (ma)' 
+                    : `Napi fogyasztás (utolsó ${days} nap)`;
+                chartTitle.textContent = titleText;
             }
 
             // Render charts
@@ -1632,6 +1639,176 @@ const UI = {
         });
     },
 
+    renderCostAnalytics(costStats, days) {
+        const section = document.getElementById('cost-analytics-section');
+        if (!section) return;
+
+        // Show section
+        section.style.display = 'block';
+
+        // Render cost summary cards
+        const costCards = document.getElementById('cost-cards');
+        if (costCards) {
+            const mostExpensive = costStats.expensive_recipes && costStats.expensive_recipes.length > 0
+                ? costStats.expensive_recipes[0]
+                : null;
+
+            costCards.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-value">${costStats.today_cost.toFixed(2)} Ft</div>
+                    <div class="stat-label">Mai költség</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-value">${costStats.total_cost.toFixed(2)} Ft</div>
+                    <div class="stat-label">Összes költség (${days} nap)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-value">${costStats.average_cost.toFixed(2)} Ft</div>
+                    <div class="stat-label">Átlagos ital ár</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🏆</div>
+                    <div class="stat-value">${mostExpensive ? mostExpensive.cost.toFixed(2) + ' Ft' : '-'}</div>
+                    <div class="stat-label">${mostExpensive ? mostExpensive.name : 'Nincs adat'}</div>
+                </div>
+            `;
+        }
+
+        // Update chart title
+        const breakdownTitle = document.getElementById('cost-breakdown-title');
+        if (breakdownTitle) {
+            const titleText = days === 1 
+                ? 'Költség megoszlás alapanyagonként (ma)' 
+                : `Költség megoszlás alapanyagonként (${days} nap)`;
+            breakdownTitle.textContent = titleText;
+        }
+
+        // Render charts
+        this.renderCostBreakdownChart(costStats.ingredient_breakdown || []);
+        this.renderExpensiveRecipesChart(costStats.expensive_recipes || []);
+    },
+
+    renderCostBreakdownChart(ingredientBreakdown) {
+        const ctx = document.getElementById('costBreakdownChart');
+        if (!ctx) return;
+
+        // Destroy previous chart if exists
+        if (this.costBreakdownChart) {
+            this.costBreakdownChart.destroy();
+        }
+
+        // Prepare data
+        const labels = ingredientBreakdown.map(i => i.name);
+        const data = ingredientBreakdown.map(i => i.cost);
+
+        // Generate colors
+        const colors = [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+            '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+        ];
+
+        this.costBreakdownChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Költség (Ft)',
+                    data: data,
+                    backgroundColor: colors.slice(0, data.length),
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value.toFixed(2)} Ft (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    },
+
+    renderExpensiveRecipesChart(expensiveRecipes) {
+        const ctx = document.getElementById('expensiveRecipesChart');
+        if (!ctx) return;
+
+        // Destroy previous chart if exists
+        if (this.expensiveChart) {
+            this.expensiveChart.destroy();
+        }
+
+        // Prepare data
+        const labels = expensiveRecipes.map(r => r.name);
+        const data = expensiveRecipes.map(r => r.cost);
+
+        // Generate colors
+        const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
+
+        this.expensiveChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Költség (Ft)',
+                    data: data,
+                    backgroundColor: colors.slice(0, data.length),
+                    borderColor: colors.slice(0, data.length),
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                indexAxis: 'y', // Horizontal bar chart
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.x.toFixed(2) + ' Ft';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(2) + ' Ft';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    },
+
     // Maintenance Admin
     async renderMaintenanceAdmin(container) {
         this.showLoading(container, 'Karbantartási adatok betöltése...');
@@ -1644,7 +1821,7 @@ const UI = {
 
             container.innerHTML = `
                 <div class="admin-header">
-                    <h3>🔧 Pumpa karbantartás</h3>
+                    <h3>Pumpa karbantartás</h3>
                     <button class="btn-primary" id="btn-flush-all">🌊 Összes pumpa öblítése</button>
                 </div>
 

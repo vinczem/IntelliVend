@@ -118,6 +118,7 @@
                     <div class="stats-period-selector">
                         <label for="stats-period">Időszak:</label>
                         <select id="stats-period">
+                            <option value="1">Mai nap</option>
                             <option value="7">Utolsó 7 nap</option>
                             <option value="14">Utolsó 14 nap</option>
                             <option value="30" selected>Utolsó 30 nap</option>
@@ -160,6 +161,29 @@
                     <div class="chart-container">
                         <h3>Top 10 legnépszerűbb ital</h3>
                         <canvas id="popularDrinksChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Cost Analytics Section -->
+                <div id="cost-analytics-section" style="display: none;">
+                    <h2 class="section-title">💰 Költség Analízis</h2>
+                    
+                    <!-- Cost Summary Cards -->
+                    <div id="cost-cards" class="stats-cards">
+                        <!-- Dinamikusan generált kártyák -->
+                    </div>
+
+                    <!-- Cost Charts -->
+                    <div class="stats-charts">
+                        <div class="chart-container">
+                            <h3 id="cost-breakdown-title">Költség megoszlás alapanyagonként</h3>
+                            <canvas id="costBreakdownChart"></canvas>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <h3>Top 5 legdrágább ital</h3>
+                            <canvas id="expensiveRecipesChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
