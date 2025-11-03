@@ -213,5 +213,41 @@ const API = {
 
     getDailyStats(days = 7) {
         return this.fetch(`/stats/daily?days=${days}`);
+    },
+
+    // Backup
+    exportDatabase() {
+        // Download file directly
+        window.location.href = `${this.baseURL}/backup/export`;
+    },
+
+    async importDatabase(file) {
+        const formData = new FormData();
+        formData.append('sqlFile', file);
+
+        const url = `${this.baseURL}/backup/import`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData
+            // Don't set Content-Type header - browser will set it with boundary
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Database import failed');
+        }
+
+        return await response.json();
+    },
+
+    getBackupList() {
+        return this.fetch('/backup/list');
+    },
+
+    deleteBackup(filename) {
+        return this.fetch(`/backup/${filename}`, {
+            method: 'DELETE'
+        });
     }
 };

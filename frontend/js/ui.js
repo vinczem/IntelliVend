@@ -472,6 +472,9 @@ const UI = {
             case 'maintenance':
                 this.renderMaintenanceAdmin(content);
                 break;
+            case 'backup':
+                this.renderBackupAdmin(content);
+                break;
         }
     },
 
@@ -2175,5 +2178,191 @@ const UI = {
                 cancelButton.textContent = 'Bezár';
             }
         });
+    },
+
+    async renderBackupAdmin(container) {
+        container.innerHTML = `
+            <div class="backup-section">
+                <div class="section-header">
+                    <h2>Adatbázis mentés és visszaállítás</h2>
+                </div>
+
+                <div class="backup-actions">
+                    <div class="backup-card export-card">
+                        <div class="card-icon">📤</div>
+                        <h3>Adatbázis exportálása</h3>
+                        <p>Töltsd le az adatbázis teljes tartalmát SQL fájlként. A fájl tartalmazza az összes táblát, adatot és struktúrát.</p>
+                        <button class="btn-primary" id="btn-export-db">
+                            <span class="btn-icon">⬇️</span>
+                            Adatbázis letöltése
+                        </button>
+                    </div>
+
+                    <div class="backup-card import-card">
+                        <div class="card-icon">📥</div>
+                        <h3>Adatbázis visszaállítása</h3>
+                        <p>Importálj egy korábban mentett SQL fájlt. <strong>FIGYELEM:</strong> Ez felülírja a jelenlegi adatokat!</p>
+                        <div class="file-upload-area" id="upload-area">
+                            <input type="file" id="sql-file-input" accept=".sql" style="display: none;">
+                            <div class="upload-placeholder" id="upload-placeholder">
+                                <span class="upload-icon">📁</span>
+                                <p>Kattints vagy húzd ide az SQL fájlt</p>
+                                <small>.sql fájlok, max 100MB</small>
+                            </div>
+                            <div class="file-selected" id="file-selected" style="display: none;">
+                                <span class="file-icon">📄</span>
+                                <span class="file-name" id="selected-file-name"></span>
+                                <button class="btn-remove" id="btn-remove-file">✕</button>
+                            </div>
+                        </div>
+                        <button class="btn-danger" id="btn-import-db" disabled>
+                            <span class="btn-icon">⚠️</span>
+                            Visszaállítás indítása
+                        </button>
+                        <div class="backup-warning">
+                            <small>⚠️ A visszaállítás FELÜLÍRJA az összes adatot!</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="backup-help">
+                    <h4>Útmutató</h4>
+                    <ul>
+                        <li><strong>Rendszeres mentés:</strong> Javasolt hetente/havonta mentést készíteni</li>
+                        <li><strong>Biztonságos tárolás:</strong> Tárold a backup fájlokat biztonságos helyen (cloud, külső merevlemez)</li>
+                        <li><strong>Visszaállítás előtt:</strong> Mindig készíts friss mentést mielőtt visszaállítasz!</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+
+        // Export button
+        const exportBtn = document.getElementById('btn-export-db');
+        exportBtn.addEventListener('click', () => {
+            this.showAlert('📥 Adatbázis letöltése...', 'info');
+            API.exportDatabase();
+            setTimeout(() => {
+                this.showAlert('✅ Adatbázis sikeresen letöltve!', 'success');
+            }, 1000);
+        });
+
+        // File upload handling
+        const fileInput = document.getElementById('sql-file-input');
+        const uploadArea = document.getElementById('upload-area');
+        const uploadPlaceholder = document.getElementById('upload-placeholder');
+        const fileSelected = document.getElementById('file-selected');
+        const selectedFileName = document.getElementById('selected-file-name');
+        const importBtn = document.getElementById('btn-import-db');
+        const removeFileBtn = document.getElementById('btn-remove-file');
+
+        let selectedFile = null;
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => {
+            if (!selectedFile) {
+                fileInput.click();
+            }
+        });
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if (!file.name.endsWith('.sql')) {
+                    this.showAlert('❌ Csak .sql fájlokat lehet feltölteni!', 'error');
+                    return;
+                }
+                if (file.size > 100 * 1024 * 1024) {
+                    this.showAlert('❌ A fájl túl nagy! Maximum 100MB megengedett.', 'error');
+                    return;
+                }
+                selectedFile = file;
+                selectedFileName.textContent = file.name;
+                uploadPlaceholder.style.display = 'none';
+                fileSelected.style.display = 'flex';
+                importBtn.disabled = false;
+            }
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.sql')) {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+                fileInput.dispatchEvent(new Event('change'));
+            } else {
+                this.showAlert('❌ Csak .sql fájlokat lehet feltölteni!', 'error');
+            }
+        });
+
+        // Remove file
+        removeFileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedFile = null;
+            fileInput.value = '';
+            uploadPlaceholder.style.display = 'block';
+            fileSelected.style.display = 'none';
+            importBtn.disabled = true;
+        });
+
+        // Import button
+        importBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const confirmed = confirm(
+                '⚠️ FIGYELEM!\n\n' +
+                'Ez a művelet FELÜLÍRJA az ÖSSZES adatot az adatbázisban!\n\n' +
+                'Biztosan folytatod a visszaállítást?'
+            );
+
+            if (!confirmed) return;
+
+            try {
+                importBtn.disabled = true;
+                importBtn.innerHTML = '<span class="spinner"></span> Visszaállítás...';
+                
+                this.showAlert('⏳ Adatbázis visszaállítása folyamatban...', 'info');
+                
+                const result = await API.importDatabase(selectedFile);
+                
+                this.showAlert('✅ ' + result.message, 'success');
+                
+                // Reset file selection
+                selectedFile = null;
+                fileInput.value = '';
+                uploadPlaceholder.style.display = 'block';
+                fileSelected.style.display = 'none';
+                importBtn.disabled = true;
+                importBtn.innerHTML = '<span class="btn-icon">⚠️</span> Visszaállítás indítása';
+                
+                // Reload page after 2 seconds
+                setTimeout(() => {
+                    this.showAlert('🔄 Oldal újratöltése...', 'info');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                }, 2000);
+
+            } catch (error) {
+                this.showAlert('❌ Visszaállítási hiba: ' + error.message, 'error');
+                importBtn.disabled = false;
+                importBtn.innerHTML = '<span class="btn-icon">⚠️</span> Visszaállítás indítása';
+            }
+        });
     }
 };
+

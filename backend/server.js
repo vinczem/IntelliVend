@@ -50,6 +50,7 @@ app.use('/api/dispense', require('./routes/dispense'));
 app.use('/api/alerts', require('./routes/alerts'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/email', require('./routes/email'));
+app.use('/api/backup', require('./routes/backup'));
 
 // Maintenance routes with MQTT client injection
 const maintenanceRoutes = require('./routes/maintenance');
