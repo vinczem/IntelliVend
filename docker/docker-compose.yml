@@ -20,14 +20,25 @@ services:
       - PORT=3000
       - API_SECRET=${API_SECRET}
       - ESP32_API_KEY=${ESP32_API_KEY}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - ALERT_EMAIL=${ALERT_EMAIL}
+      - MQTT_BROKER=${MQTT_BROKER}
+      - MQTT_PORT=${MQTT_PORT}
+      - MQTT_USERNAME=${MQTT_USERNAME}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
     depends_on:
       mysql:
         condition: service_healthy
     networks:
       - intellivend-network
-    volumes:
-      - ../backend:/app
-      - /app/node_modules
+    # Volume mount kikapcsolva production módban
+    # Development: kommentáld vissza a hot reload-hoz
+    # volumes:
+    #   - ../backend:/app
+    #   - /app/node_modules
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
@@ -92,19 +103,21 @@ services:
       - intellivend-network
 
   # MQTT Broker (opcionális, ESP32 kommunikációhoz)
-  mosquitto:
-    image: eclipse-mosquitto:latest
-    container_name: intellivend-mqtt
-    restart: unless-stopped
-    ports:
-      - "1883:1883"
-      - "9001:9001"
-    volumes:
-      - ./mosquitto/config:/mosquitto/config
-      - ./mosquitto/data:/mosquitto/data
-      - ./mosquitto/log:/mosquitto/log
-    networks:
-      - intellivend-network
+  # KIKAPCSOLVA - Home Assistant MQTT-t használjuk helyette!
+  # Beállítás: .env fájlban MQTT_BROKER=<homeassistant_ip>
+  # mosquitto:
+  #   image: eclipse-mosquitto:latest
+  #   container_name: intellivend-mqtt
+  #   restart: unless-stopped
+  #   ports:
+  #     - "1883:1883"
+  #     - "9001:9001"
+  #   volumes:
+  #     - ./mosquitto/config:/mosquitto/config
+  #     - ./mosquitto/data:/mosquitto/data
+  #     - ./mosquitto/log:/mosquitto/log
+  #   networks:
+  #     - intellivend-network
 
 networks:
   intellivend-network:

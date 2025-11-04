@@ -54,7 +54,7 @@ router.get('/daily', (req, res) => {
   
   const query = `
     SELECT 
-      DATE_FORMAT(DATE(started_at), '%Y-%m-%d') as date,
+      DATE(started_at) as date,
       COUNT(*) as drinks_count,
       SUM(total_volume_ml) as total_volume,
       COUNT(DISTINCT recipe_id) as unique_recipes

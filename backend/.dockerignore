@@ -1,0 +1,16 @@
+# Ne másold be a Docker image-be
+.env
+.env.local
+.env.*.local
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+logs/
+backups/
+uploads/
+nohup.out
+.git/
+.gitignore
+README.md
