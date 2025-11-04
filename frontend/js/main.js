@@ -181,14 +181,65 @@ async function checkAlerts() {
         const alerts = await API.getAlerts({ is_resolved: 'false' });
         
         if (alerts.length > 0) {
-            // Show all unresolved alerts
+            // Get seen alerts from LocalStorage
+            const seenAlerts = getSeenAlerts();
+            
+            // Show only new or updated alerts
             alerts.forEach(alert => {
-                const alertType = alert.severity === 'critical' ? 'error' : 'warning';
-                UI.showAlert(`⚠️ ${alert.message}`, alertType);
+                const alertKey = `${alert.id}-${alert.created_at}`;
+                
+                // Check if this exact alert (ID + timestamp) has been seen
+                if (!seenAlerts.includes(alertKey)) {
+                    const alertType = alert.severity === 'critical' ? 'error' : 'warning';
+                    UI.showAlert(`⚠️ ${alert.message}`, alertType);
+                    
+                    // Mark as seen
+                    markAlertAsSeen(alertKey);
+                }
             });
         }
     } catch (error) {
         console.error('Error checking alerts:', error);
+    }
+}
+
+// LocalStorage helpers for alert tracking
+function getSeenAlerts() {
+    try {
+        const seen = localStorage.getItem('intellivend_seen_alerts');
+        return seen ? JSON.parse(seen) : [];
+    } catch (error) {
+        console.error('Error reading seen alerts:', error);
+        return [];
+    }
+}
+
+function markAlertAsSeen(alertKey) {
+    try {
+        const seen = getSeenAlerts();
+        
+        // Add to seen list if not already there
+        if (!seen.includes(alertKey)) {
+            seen.push(alertKey);
+            
+            // Keep only last 100 seen alerts to prevent LocalStorage bloat
+            if (seen.length > 100) {
+                seen.shift();
+            }
+            
+            localStorage.setItem('intellivend_seen_alerts', JSON.stringify(seen));
+        }
+    } catch (error) {
+        console.error('Error marking alert as seen:', error);
+    }
+}
+
+function clearSeenAlerts() {
+    try {
+        localStorage.removeItem('intellivend_seen_alerts');
+        console.log('✅ Seen alerts cleared');
+    } catch (error) {
+        console.error('Error clearing seen alerts:', error);
     }
 }
 
