@@ -2,11 +2,7 @@
  * WebSocket Client - Real-time MQTT Updates
  * 
  * Handles Socket.IO connection to backend for real-time ESP32 updates
- * 
- * VERSION: 1.0.9
  */
-
-console.log('🚀 websocket.js loaded! VERSION: 1.0.9');
 
 class WebSocketClient {
   constructor() {
@@ -30,9 +26,6 @@ class WebSocketClient {
     let socketPath;
     const pathname = window.location.pathname;
     
-    console.log('Debug - window.location.pathname:', pathname);
-    console.log('Debug - window.location.origin:', window.location.origin);
-    
     if (pathname.includes('/api/hassio_ingress/')) {
       // Running through Home Assistant Ingress
       const ingressMatch = pathname.match(/^(\/api\/hassio_ingress\/[^\/]+)/);
@@ -42,25 +35,16 @@ class WebSocketClient {
       // but the path MUST include the ingress base + /socket.io
       serverUrl = window.location.origin;
       socketPath = ingressBase + '/socket.io';
-      
-      console.log('Debug - Ingress detected, base:', ingressBase);
-      console.log('Debug - Socket.IO path will be:', socketPath);
     } else {
       // Direct access or development mode
       serverUrl = window.location.origin;
       socketPath = '/socket.io';
-      console.log('Debug - Direct access mode');
-      console.log('Debug - Socket.IO path will be:', socketPath);
     }
-    
-    console.log('🔌 Connecting to WebSocket server:', serverUrl);
-    console.log('🔌 Socket.IO path:', socketPath);
     
     // Load Socket.IO library dynamically
     const script = document.createElement('script');
     script.src = 'https://cdn.socket.io/4.5.4/socket.io.min.js';
     script.onload = () => {
-      console.log('✅ Socket.IO library loaded');
       this.socket = io(serverUrl, {
         path: socketPath,
         transports: ['websocket', 'polling'],
@@ -73,7 +57,7 @@ class WebSocketClient {
       this.setupEventHandlers();
     };
     script.onerror = () => {
-      console.error('❌ Failed to load Socket.IO library');
+      console.error('Failed to load Socket.IO library');
     };
     document.head.appendChild(script);
   }
@@ -84,13 +68,11 @@ class WebSocketClient {
   setupEventHandlers() {
     this.socket.on('connect', () => {
       this.connected = true;
-      console.log('✅ WebSocket connected:', this.socket.id);
       this.updateConnectionStatus(true);
     });
 
     this.socket.on('disconnect', () => {
       this.connected = false;
-      console.log('❌ WebSocket disconnected');
       this.updateConnectionStatus(false);
     });
 
@@ -101,27 +83,23 @@ class WebSocketClient {
 
     // MQTT event handlers
     this.socket.on('dispense:status', (data) => {
-      console.log('📊 Dispense status:', data);
       this.trigger('dispense:status', data);
     });
 
     this.socket.on('dispense:complete', (data) => {
-      console.log('✅ Dispense complete:', data);
       this.trigger('dispense:complete', data);
     });
 
     this.socket.on('maintenance:complete', (data) => {
-      console.log('🔧 Maintenance complete:', data);
       this.trigger('maintenance:complete', data);
     });
 
     this.socket.on('esp32:error', (data) => {
-      console.error('❌ ESP32 error:', data);
+      console.error('ESP32 error:', data);
       this.trigger('esp32:error', data);
     });
 
     this.socket.on('esp32:heartbeat', (data) => {
-      console.log('💓 ESP32 heartbeat:', data);
       this.trigger('esp32:heartbeat', data);
     });
   }
@@ -173,17 +151,12 @@ class WebSocketClient {
 // Global WebSocket instance
 const wsClient = new WebSocketClient();
 
-console.log('🚀 WebSocketClient instance created');
-
 // Auto-connect when page loads OR immediately if DOM already loaded
 if (document.readyState === 'loading') {
-  console.log('⏳ DOM still loading, waiting for DOMContentLoaded...');
   document.addEventListener('DOMContentLoaded', () => {
-    console.log('✅ DOMContentLoaded fired, connecting WebSocket...');
     wsClient.connect();
   });
 } else {
-  console.log('✅ DOM already loaded, connecting WebSocket immediately...');
   wsClient.connect();
 }
 
@@ -193,8 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Example: Listen for dispense status updates
   wsClient.on('dispense:status', (data) => {
-    console.log('📊 Dispense status:', data);
-    
     // Show progress container
     const progressContainer = document.getElementById('dispense-progress');
     if (progressContainer) {
@@ -224,8 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Example: Show alert on completion
   wsClient.on('dispense:complete', (data) => {
-    console.log('✅ Dispense complete:', data);
-    
     // Clear timeout if active
     if (window.dispenseTimeoutId) {
       clearTimeout(window.dispenseTimeoutId);
@@ -309,7 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Example: Update ESP32 status indicator
   let lastHeartbeat = Date.now();
   wsClient.on('esp32:heartbeat', (data) => {
-    console.log('💓 ESP32 heartbeat:', data);
     lastHeartbeat = Date.now();
     
     const esp32Status = document.getElementById('esp32-status');
