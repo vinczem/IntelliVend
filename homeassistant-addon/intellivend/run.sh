@@ -125,10 +125,19 @@ EOF
 
 # Update frontend API config for ingress support
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Configuring frontend..."
-cat > /app/frontend/js/config.js << EOF
+cat > /app/frontend/js/config.js << 'EOF'
 // API configuration
 const API_CONFIG = {
-    baseURL: '/api',
+    baseURL: (() => {
+        // Check if we're running through Home Assistant Ingress
+        const path = window.location.pathname;
+        if (path.includes('/api/hassio_ingress/')) {
+            // Extract ingress base path and append /api
+            const ingressMatch = path.match(/^(\/api\/hassio_ingress\/[^\/]+)/);
+            return ingressMatch ? ingressMatch[1] + '/api' : '/api';
+        }
+        return '/api';
+    })(),
     timeout: 10000
 };
 EOF
