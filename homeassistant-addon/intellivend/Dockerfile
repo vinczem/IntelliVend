@@ -19,8 +19,13 @@ WORKDIR /tmp
 # Clone repository with cache busting
 # Add build arg to force fresh clone on each build
 ARG BUILD_DATE
+ARG VERSION
 RUN echo "Build date: ${BUILD_DATE}" && \
-    git clone --depth 1 https://github.com/vinczem/IntelliVend.git repo
+    echo "Version: ${VERSION}" && \
+    rm -rf /tmp/repo 2>/dev/null || true && \
+    git clone --depth 1 --branch main https://github.com/vinczem/IntelliVend.git repo && \
+    cd repo && \
+    git log -1 --oneline
 
 # Setup application directory
 WORKDIR /app
