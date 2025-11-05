@@ -366,7 +366,7 @@ class MQTTClient {
       const db = require('./database');
       const haService = getHAService();
       
-      logger.info('🏠 Initializing Home Assistant integration...');
+      logger.info('Initializing Home Assistant integration...');
       
       // Set availability
       await haService.setAvailable(true);
@@ -382,26 +382,36 @@ class MQTTClient {
         LEFT JOIN inventory inv ON p.id = inv.pump_id
         LEFT JOIN ingredients i ON p.ingredient_id = i.id
       `, async (err, pumps) => {
-        if (!err && pumps) {
+        if (err) {
+          logger.error('❌ Error fetching pump data for HA:', err);
+        } else if (pumps && pumps.length > 0) {
+          logger.info(`Updating ${pumps.length} pump sensors...`);
           for (const pump of pumps) {
             await haService.updatePumpStatus(pump.pump_id, pump);
           }
           await haService.updateSystemAlerts(pumps);
-          
-          // Update last dispense sensor with most recent completed dispense
-          db.query(`
-            SELECT recipe_name, started_at, duration_seconds, total_volume_ml
-            FROM dispensing_log
-            WHERE status = 'completed'
-            ORDER BY completed_at DESC
-            LIMIT 1
-          `, async (err, results) => {
-            if (!err && results && results.length > 0) {
-              await haService.updateLastDispense(results[0]);
-            }
-            logger.info('✅ Home Assistant integration initialized');
-          });
+        } else {
+          logger.warn('No pump data found in database');
         }
+        
+        // Update last dispense sensor with most recent completed dispense
+        db.query(`
+          SELECT recipe_name, started_at, duration_seconds, total_volume_ml
+          FROM dispensing_log
+          WHERE status = 'completed'
+          ORDER BY completed_at DESC
+          LIMIT 1
+        `, async (err, results) => {
+          if (err) {
+            logger.error('❌ Error fetching last dispense:', err);
+          } else if (results && results.length > 0) {
+            await haService.updateLastDispense(results[0]);
+            logger.info('Last dispense sensor updated');
+          } else {
+            logger.info('No completed dispenses found');
+          }
+          logger.info('Home Assistant integration initialized');
+        });
       });
     } catch (error) {
       logger.error('❌ Error initializing Home Assistant:', error);
