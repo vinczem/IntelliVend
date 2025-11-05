@@ -1,38 +1,45 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Install Node.js and dependencies
+# Install dependencies
 RUN apk add --no-cache \
     nodejs \
     npm \
     nginx \
     mysql-client \
-    curl
+    curl \
+    git
 
 # Set working directory
+WORKDIR /tmp
+
+# Clone repository
+RUN git clone --depth 1 https://github.com/vinczem/IntelliVend.git repo
+
+# Setup application directory
 WORKDIR /app
 
-# Copy backend
-COPY backend/package*.json ./backend/
-WORKDIR /app/backend
-RUN npm ci --only=production
-
-COPY backend/ ./
-RUN mkdir -p logs
+# Install backend dependencies
+RUN cp -r /tmp/repo/backend . && \
+    cd backend && \
+    npm ci --only=production && \
+    mkdir -p logs
 
 # Copy frontend
-WORKDIR /app
-COPY frontend/ ./frontend/
+RUN cp -r /tmp/repo/frontend .
 
-# Copy database schema and seed
-COPY database/ /app/database/
+# Copy database files
+RUN cp -r /tmp/repo/database .
 
 # Copy nginx configuration
-COPY homeassistant-addon/intellivend/nginx.conf /etc/nginx/http.d/default.conf
+RUN cp /tmp/repo/homeassistant-addon/intellivend/nginx.conf /etc/nginx/http.d/default.conf
 
 # Copy run script
-COPY homeassistant-addon/intellivend/run.sh /
-RUN chmod +x /run.sh
+RUN cp /tmp/repo/homeassistant-addon/intellivend/run.sh / && \
+    chmod +x /run.sh
+
+# Cleanup
+RUN rm -rf /tmp/repo
 
 # Expose ports
 EXPOSE 8099 3000
