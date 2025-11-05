@@ -2,6 +2,14 @@
 
 All notable changes to this add-on will be documented in this file.
 
+## [1.0.1] - 2025-11-05
+
+### Fixed
+- API URL configuration for Home Assistant Ingress compatibility
+- Fixed 404 errors when accessing API endpoints through Ingress
+- Changed API baseURL from absolute to relative paths (/api)
+- Removed hardcoded hostname from frontend configuration
+
 ## [1.0.0] - 2025-11-05
 
 ### Added
