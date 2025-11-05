@@ -1,4 +1,4 @@
-#!/usr/bin/with-contab bashio
+#!/usr/bin/with-contenv bashio
 
 # Enable error handling
 set -e

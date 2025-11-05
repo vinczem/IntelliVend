@@ -34,9 +34,10 @@ RUN cp -r /tmp/repo/database .
 # Copy nginx configuration
 RUN cp /tmp/repo/homeassistant-addon/intellivend/nginx.conf /etc/nginx/http.d/default.conf
 
-# Copy run script
-RUN cp /tmp/repo/homeassistant-addon/intellivend/run.sh / && \
-    chmod +x /run.sh
+# Copy and setup run script for s6-overlay
+RUN mkdir -p /etc/services.d/intellivend && \
+    cp /tmp/repo/homeassistant-addon/intellivend/run.sh /etc/services.d/intellivend/run && \
+    chmod +x /etc/services.d/intellivend/run
 
 # Cleanup
 RUN rm -rf /tmp/repo
@@ -47,6 +48,3 @@ EXPOSE 8099 3000
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s \
     CMD curl -f http://localhost:3000/health || exit 1
-
-# Run
-CMD ["/run.sh"]
