@@ -2,9 +2,11 @@
  * WebSocket Client - Real-time MQTT Updates
  * 
  * Handles Socket.IO connection to backend for real-time ESP32 updates
+ * 
+ * VERSION: 1.0.5
  */
 
-console.log('🚀 websocket.js loaded!');
+console.log('🚀 websocket.js loaded! VERSION: 1.0.5');
 
 class WebSocketClient {
   constructor() {
