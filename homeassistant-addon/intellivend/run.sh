@@ -155,6 +155,31 @@ const API_CONFIG = {
 };
 EOF
 
+# Start Node.js backend in background
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting backend server..."
+cd /app/backend
+node server.js &
+BACKEND_PID=$!
+
+# Wait for backend to be ready
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for backend to be ready..."
+timeout=30
+while [ $timeout -gt 0 ]; do
+    if curl -f http://localhost:3000/health 2>/dev/null; then
+        break
+    fi
+    timeout=$((timeout - 1))
+    sleep 1
+done
+
+if [ $timeout -eq 0 ]; then
+    bashio::log.error "[$(date '+%Y-%m-%d %H:%M:%S')] Backend failed to start!"
+    kill $BACKEND_PID 2>/dev/null || true
+    exit 1
+fi
+
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Backend is ready!"
+
 # Stop any existing nginx processes
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Stopping any existing Nginx processes..."
 pkill nginx 2>/dev/null || true
@@ -164,9 +189,6 @@ sleep 1
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting Nginx..."
 nginx
 
-# Start Node.js backend
-bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting backend server..."
-cd /app/backend
-
-# Run Node.js directly - output will go to supervisor
-exec node server.js
+# Keep the script running and wait for backend process
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] IntelliVend is running!"
+wait $BACKEND_PID
