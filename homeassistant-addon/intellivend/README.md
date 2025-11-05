@@ -8,15 +8,15 @@ Az IntelliVend egy teljes körű italautomata rendszer Home Assistant-hez, amely
 
 ## Funkciók
 
-- 🍹 **Recept kezelés**: Koktélok és italok receptjeinek létrehozása, szerkesztése
-- 🔄 **Automatizált adagolás**: Precíz mennyiségű alapanyagok adagolása többpontos pumpákkal
-- 📊 **Készlet nyilvántartás**: Valós idejű nyomon követés és alacsony készlet riasztások
-- 🌐 **Modern Web UI**: Reszponzív, touch-friendly kezelőfelület
-- 📡 **MQTT integráció**: ESP32 vezérlés MQTT protokollal
-- 📈 **Statisztikák**: Részletes adagolási előzmények és fogyasztási adatok
-- 🔧 **Karbantartás**: Pumpa kalibráció és diagnosztika
-- 🚨 **Riasztások**: Email értesítések alacsony készlet esetén
-- 💾 **Backup/Restore**: Teljes adatbázis mentés és visszaállítás
+- **Recept kezelés**: Koktélok és italok receptjeinek létrehozása, szerkesztése
+- **Automatizált adagolás**: Precíz mennyiségű alapanyagok adagolása többpontos pumpákkal
+- **Készlet nyilvántartás**: Valós idejű nyomon követés és alacsony készlet riasztások
+- **Modern Web UI**: Reszponzív, touch-friendly kezelőfelület
+- **MQTT integráció**: ESP32 vezérlés MQTT protokollal
+- **Statisztikák**: Részletes adagolási előzmények és fogyasztási adatok
+- **Karbantartás**: Pumpa kalibráció és diagnosztika
+- **Riasztások**: Email értesítések alacsony készlet esetén
+- **Backup/Restore**: Teljes adatbázis mentés és visszaállítás
 
 ## Telepítés
 
@@ -40,30 +40,18 @@ Az IntelliVend egy teljes körű italautomata rendszer Home Assistant-hez, amely
 
 ### 3. Konfiguráció
 
-#### MySQL/MariaDB beállítása
+#### MQTT beállítása (opcionális)
 
-Az IntelliVend MySQL/MariaDB adatbázist igényel. Ha még nincs telepítve:
-
-1. Telepítsd a **MariaDB** add-ont a hivatalos repository-ból
-2. Indítsd el és hozz létre egy adatbázist és felhasználót az IntelliVend számára
-
-#### MQTT beállítása
-
-Az ESP32 eszközzel való kommunikációhoz MQTT broker szükséges:
+Ha ESP32 eszközzel szeretnél kommunikálni, MQTT broker szükséges:
 
 1. Telepítsd a **Mosquitto broker** add-ont
 2. Konfiguráld a felhasználókat és jogosultságokat
 
 #### IntelliVend konfiguráció
 
-A Configuration lapon állítsd be a következőket:
+A Configuration lapon állítsd be az MQTT kapcsolatot (ha szükséges):
 
 ```yaml
-mysql_host: core-mariadb
-mysql_port: 3306
-mysql_database: intellivend
-mysql_user: intellivend
-mysql_password: your_secure_password
 mqtt_broker: core-mosquitto
 mqtt_port: 1883
 mqtt_user: intellivend
@@ -82,7 +70,6 @@ log_level: info
 Az add-on elérhető:
 - **Ingress-en keresztül**: Kattints a **Open Web UI** gombra
 - **Közvetlen elérés**: `http://homeassistant.local:8099`
-- **API**: `http://homeassistant.local:3000/api`
 
 ## Első lépések
 
@@ -110,14 +97,6 @@ Az add-on elérhető:
    - A Dispense (Adagolás) menüpontból indítsd el az italok készítését
 
 ## Konfigurációs Opciók
-
-### MySQL beállítások
-
-- **mysql_host**: MySQL szerver címe (alapértelmezett: `core-mariadb`)
-- **mysql_port**: MySQL port (alapértelmezett: `3306`)
-- **mysql_database**: Adatbázis neve (alapértelmezett: `intellivend`)
-- **mysql_user**: Adatbázis felhasználó
-- **mysql_password**: Adatbázis jelszó (kötelező!)
 
 ### MQTT beállítások
 
@@ -177,6 +156,7 @@ Az ESP32 a következő MQTT topicokat használja:
 - Készlet nyilvántartás
 - Statisztikák és riasztások
 - Backup/Restore funkció
+- Beépített MySQL adatbázis automatikus inicializálással
 
 ## Licenc
 
@@ -184,7 +164,7 @@ MIT License - részletek a LICENSE fájlban
 
 ## Köszönetnyilvánítás
 
-Fejlesztette: Zoltan Nagy és Mihály Vincze
+Fejlesztette: Zoltan Nagy és Mihaly Vincze
 
 ---
 
