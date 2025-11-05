@@ -3,17 +3,17 @@
 # Enable error handling
 set -e
 
-bashio::log.info "********************************"
-bashio::log.info "Starting IntelliVend Add-on..."
-bashio::log.info "********************************"
+bashio::log.info "================================"
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting IntelliVend Add-on..."
+bashio::log.info "================================"
 
 # Start MySQL server
-bashio::log.info "Starting MySQL server..."
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting MySQL server..."
 mysqld --user=mysql --datadir=/data/mysql &
 MYSQL_PID=$!
 
 # Wait for MySQL to be ready
-bashio::log.info "Waiting for MySQL to be ready..."
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for MySQL to be ready..."
 timeout=30
 while [ $timeout -gt 0 ]; do
     if mysqladmin ping --silent 2>/dev/null; then
@@ -24,11 +24,11 @@ while [ $timeout -gt 0 ]; do
 done
 
 if [ $timeout -eq 0 ]; then
-    bashio::log.error "MySQL failed to start!"
+    bashio::log.error "[$(date '+%Y-%m-%d %H:%M:%S')] MySQL failed to start!"
     exit 1
 fi
 
-bashio::log.info "MySQL is ready!"
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] MySQL is ready!"
 
 # Get MQTT configuration
 MQTT_BROKER=$(bashio::config 'mqtt_broker')
@@ -38,7 +38,7 @@ MQTT_PASSWORD=$(bashio::config 'mqtt_password')
 LOG_LEVEL=$(bashio::config 'log_level')
 
 # Create .env file for backend with local MySQL
-bashio::log.info "Configuring backend environment..."
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Configuring backend environment..."
 cat > /app/backend/.env << EOF
 NODE_ENV=production
 PORT=3000
@@ -61,7 +61,7 @@ ESP32_API_KEY=$(openssl rand -hex 16)
 EOF
 
 # Update frontend API config for ingress support
-bashio::log.info "Configuring frontend..."
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Configuring frontend..."
 cat > /app/frontend/js/config.js << EOF
 // API configuration
 const API_CONFIG = {
@@ -73,10 +73,10 @@ const API_CONFIG = {
 EOF
 
 # Start Nginx
-bashio::log.info "Starting Nginx..."
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting Nginx..."
 nginx
 
 # Start Node.js backend
-bashio::log.info "Starting backend server..."
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting backend server..."
 cd /app/backend
 exec node server.js
