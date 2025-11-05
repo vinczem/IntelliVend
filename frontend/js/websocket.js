@@ -21,13 +21,28 @@ class WebSocketClient {
    * Connect to WebSocket server
    */
   connect() {
-    const serverUrl = 'http://localhost:3000';
+    // Detect WebSocket URL based on current location
+    let serverUrl;
+    const path = window.location.pathname;
+    
+    if (path.includes('/api/hassio_ingress/')) {
+      // Running through Home Assistant Ingress
+      const ingressMatch = path.match(/^(\/api\/hassio_ingress\/[^\/]+)/);
+      const ingressBase = ingressMatch ? ingressMatch[1] : '';
+      serverUrl = window.location.origin + ingressBase;
+    } else {
+      // Direct access or development mode
+      serverUrl = window.location.origin;
+    }
+    
+    console.log('🔌 Connecting to WebSocket:', serverUrl);
     
     // Load Socket.IO library dynamically
     const script = document.createElement('script');
     script.src = 'https://cdn.socket.io/4.5.4/socket.io.min.js';
     script.onload = () => {
       this.socket = io(serverUrl, {
+        path: path.includes('/api/hassio_ingress/') ? '/socket.io' : '/socket.io',
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionDelay: 1000,
