@@ -4,6 +4,11 @@ bashio::log.info "================================"
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting IntelliVend Add-on..."
 bashio::log.info "================================"
 
+# Ensure MySQL run directory exists
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Creating MySQL runtime directories..."
+mkdir -p /run/mysqld
+chown -R mysql:mysql /run/mysqld
+
 # Ensure MySQL data directory exists
 if ! test -d "/data/mysql"; then
     bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Creating MySQL data directory..."
@@ -11,6 +16,58 @@ if ! test -d "/data/mysql"; then
     chown -R mysql:mysql /data/mysql
 else
     bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] MySQL data directory exists."
+fi
+
+# Initialize MySQL if not already done
+if ! test -d "/data/mysql/mysql"; then
+    bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Initializing MySQL database..."
+    
+    # Initialize MySQL data directory
+    mysql_install_db --user=mysql --datadir=/data/mysql > /dev/null 2>&1
+    
+    bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting temporary MySQL for setup..."
+    mysqld --user=mysql --datadir=/data/mysql --skip-networking &
+    MYSQL_INIT_PID=$!
+    
+    # Wait for MySQL to start
+    timeout=30
+    while test $timeout -gt 0; do
+        if mysqladmin ping --silent 2>/dev/null; then
+            break
+        fi
+        timeout=$((timeout - 1))
+        sleep 1
+    done
+    
+    if test $timeout -eq 0; then
+        bashio::log.error "[$(date '+%Y-%m-%d %H:%M:%S')] MySQL initialization failed!"
+        kill $MYSQL_INIT_PID 2>/dev/null || true
+        exit 1
+    fi
+    
+    bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Setting up IntelliVend database..."
+    
+    # Create database and user
+    mysql -e "CREATE DATABASE IF NOT EXISTS intellivend CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    mysql -e "CREATE USER IF NOT EXISTS 'intellivend'@'localhost' IDENTIFIED BY 'intellivend';"
+    mysql -e "GRANT ALL PRIVILEGES ON intellivend.* TO 'intellivend'@'localhost';"
+    mysql -e "FLUSH PRIVILEGES;"
+    
+    # Import schema and seed data
+    bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Loading database schema..."
+    mysql intellivend < /app/database/schema.sql
+    
+    bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Loading sample data..."
+    mysql intellivend < /app/database/seed.sql
+    
+    # Shutdown temporary MySQL
+    bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Shutting down temporary MySQL..."
+    mysqladmin shutdown
+    wait $MYSQL_INIT_PID
+    
+    bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] MySQL initialization complete!"
+else
+    bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] MySQL database already initialized."
 fi
 
 # Start MySQL server

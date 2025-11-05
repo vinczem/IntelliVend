@@ -36,30 +36,17 @@ RUN cp -r /tmp/repo/database .
 # Copy nginx configuration
 RUN cp /tmp/repo/homeassistant-addon/intellivend/nginx.conf /etc/nginx/http.d/default.conf
 
-# Setup s6-overlay v3 services for MySQL initialization
-RUN mkdir -p /etc/s6-overlay/s6-rc.d/init-mysql && \
-    mkdir -p /etc/s6-overlay/s6-rc.d/intellivend && \
+# Setup s6-overlay v3 service
+RUN mkdir -p /etc/s6-overlay/s6-rc.d/intellivend && \
     mkdir -p /etc/s6-overlay/s6-rc.d/user/contents.d
-
-# Copy MySQL init script (oneshot service that runs before intellivend)
-COPY init-mysql.sh /etc/s6-overlay/s6-rc.d/init-mysql/up
-RUN chmod +x /etc/s6-overlay/s6-rc.d/init-mysql/up && \
-    echo "oneshot" > /etc/s6-overlay/s6-rc.d/init-mysql/type
 
 # Copy main run script
 COPY run.sh /etc/s6-overlay/s6-rc.d/intellivend/run
-RUN chmod +x /etc/s6-overlay/s6-rc.d/intellivend/run
+RUN chmod +x /etc/s6-overlay/s6-rc.d/intellivend/run && \
+    echo "longrun" > /etc/s6-overlay/s6-rc.d/intellivend/type
 
-# Create service type file for main service
-RUN echo "longrun" > /etc/s6-overlay/s6-rc.d/intellivend/type
-
-# Make intellivend depend on init-mysql
-RUN mkdir -p /etc/s6-overlay/s6-rc.d/intellivend/dependencies.d && \
-    touch /etc/s6-overlay/s6-rc.d/intellivend/dependencies.d/init-mysql
-
-# Enable the services
-RUN touch /etc/s6-overlay/s6-rc.d/user/contents.d/init-mysql && \
-    touch /etc/s6-overlay/s6-rc.d/user/contents.d/intellivend
+# Enable the service
+RUN touch /etc/s6-overlay/s6-rc.d/user/contents.d/intellivend
 
 # Cleanup
 RUN rm -rf /tmp/repo
