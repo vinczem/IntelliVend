@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# Docker files
+docker/
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Development
+.vscode/
+.idea/
+*.log
+*.tmp
+
+# Node
+backend/node_modules/
+backend/logs/
+backend/.env
+backend/.env.*
+
+# Testing
+backend/test/
+tools/
+
+# ESP32
+esp32/.pio/
+esp32/.vscode/
+esp32/lib/
+esp32/test/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
