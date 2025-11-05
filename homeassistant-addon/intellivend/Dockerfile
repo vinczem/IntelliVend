@@ -33,10 +33,6 @@ RUN cp -r /tmp/repo/frontend .
 # Copy database files
 RUN cp -r /tmp/repo/database .
 
-# Setup MySQL data directory
-RUN mkdir -p /data/mysql && \
-    chown -R mysql:mysql /data/mysql
-
 # Copy nginx configuration
 RUN cp /tmp/repo/homeassistant-addon/intellivend/nginx.conf /etc/nginx/http.d/default.conf
 

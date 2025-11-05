@@ -3,6 +3,14 @@
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting MySQL initialization check..." >&2
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting MySQL initialization check..."
 
+# Ensure MySQL data directory exists
+if ! test -d "/data/mysql"; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Creating MySQL data directory..." >&2
+    bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Creating MySQL data directory..."
+    mkdir -p /data/mysql
+    chown -R mysql:mysql /data/mysql
+fi
+
 # Initialize MySQL if not already done
 if ! test -d "/data/mysql/mysql"; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] MySQL not initialized, starting initialization..." >&2
