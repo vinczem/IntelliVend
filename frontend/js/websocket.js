@@ -25,24 +25,31 @@ class WebSocketClient {
     let serverUrl;
     const path = window.location.pathname;
     
+    console.log('Debug - window.location.pathname:', path);
+    console.log('Debug - window.location.origin:', window.location.origin);
+    
     if (path.includes('/api/hassio_ingress/')) {
       // Running through Home Assistant Ingress
       const ingressMatch = path.match(/^(\/api\/hassio_ingress\/[^\/]+)/);
       const ingressBase = ingressMatch ? ingressMatch[1] : '';
       serverUrl = window.location.origin + ingressBase;
+      console.log('Debug - Ingress detected, base:', ingressBase);
     } else {
       // Direct access or development mode
       serverUrl = window.location.origin;
+      console.log('Debug - Direct access mode');
     }
     
     console.log('🔌 Connecting to WebSocket:', serverUrl);
+    console.log('🔌 Socket.IO path will be: /socket.io');
     
     // Load Socket.IO library dynamically
     const script = document.createElement('script');
     script.src = 'https://cdn.socket.io/4.5.4/socket.io.min.js';
     script.onload = () => {
+      console.log('✅ Socket.IO library loaded');
       this.socket = io(serverUrl, {
-        path: path.includes('/api/hassio_ingress/') ? '/socket.io' : '/socket.io',
+        path: '/socket.io',
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionDelay: 1000,
@@ -51,6 +58,9 @@ class WebSocketClient {
       });
 
       this.setupEventHandlers();
+    };
+    script.onerror = () => {
+      console.error('❌ Failed to load Socket.IO library');
     };
     document.head.appendChild(script);
   }
