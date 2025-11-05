@@ -13,6 +13,7 @@ Az IntelliVend egy teljes körű italautomata rendszer Home Assistant-hez, amely
 - **Készlet nyilvántartás**: Valós idejű nyomon követés és alacsony készlet riasztások
 - **Modern Web UI**: Reszponzív, touch-friendly kezelőfelület
 - **MQTT integráció**: ESP32 vezérlés MQTT protokollal
+- **Home Assistant Discovery**: Automatikus entitások létrehozása szenzorokkal és riasztásokkal
 - **Statisztikák**: Részletes adagolási előzmények és fogyasztási adatok
 - **Karbantartás**: Pumpa kalibráció és diagnosztika
 - **Riasztások**: Email értesítések alacsony készlet esetén
@@ -146,18 +147,119 @@ Az add-on elérhető:
 
 ## MQTT Topicok
 
-Az ESP32 a következő MQTT topicokat használja:
+Az ESP32 és a Backend a következő MQTT topicokat használja:
 
-### Publikált topicok (ESP32 → Backend)
-- `intellivend/status` - ESP32 állapot
+### ESP32 ↔ Backend kommunikáció
+
+**Publikált topicok (ESP32 → Backend):**
+- `intellivend/status` - Valós idejű pumpa állapot frissítések
 - `intellivend/dispense/complete` - Adagolás befejezve
-- `intellivend/maintenance/complete` - Öblítés befejezve
+- `intellivend/maintenance/complete` - Öblítés/karbantartás befejezve
 - `intellivend/error` - Hibaüzenetek
-- `intellivend/heartbreak` - Életjel topic
+- `intellivend/heartbeat` - ESP32 életjel (WiFi, memória, üzemidő)
 
-### Feliratkozott topicok (Backend → ESP32)
+**Feliratkozott topicok (Backend → ESP32):**
 - `intellivend/dispense/command` - Adagolás indítása
 - `intellivend/maintenance/flush` - Öblítés indítása
+- `intellivend/calibration/start` - Kalibrálás indítása
+- `intellivend/emergency/stop` - Vészleállítás
+
+### Home Assistant Discovery topicok
+
+**Discovery config (Backend → Home Assistant, retain=true):**
+- `homeassistant/sensor/intellivend/{entity_id}/config` - Szenzor konfigurációk
+- `homeassistant/binary_sensor/intellivend/{entity_id}/config` - Bináris szenzor konfigurációk
+
+**Állapot topicok (Backend → Home Assistant):**
+- `intellivend/ha/availability` - Rendszer elérhetőség ("online"/"offline")
+- `intellivend/ha/esp32/wifi` - ESP32 WiFi jelerősség
+- `intellivend/ha/esp32/memory` - ESP32 memória használat
+- `intellivend/ha/esp32/uptime` - ESP32 üzemidő
+- `intellivend/ha/esp32/active_pumps` - Aktív pumpák száma
+- `intellivend/ha/esp32/status` - ESP32 kapcsolat állapot
+- `intellivend/ha/pump/{1-8}/level` - Pumpa készlet szintek
+- `intellivend/ha/pump/{1-8}/alert` - Pumpa riasztások (alacsony/üres)
+- `intellivend/ha/last_dispense` - Utolsó adagolt ital adatai
+- `intellivend/ha/alerts/low_stock` - Rendszer szintű alacsony készlet riasztás
+- `intellivend/ha/alerts/empty_bottle` - Rendszer szintű üres palack riasztás
+
+## Home Assistant Integráció
+
+Az add-on automatikusan létrehoz Home Assistant entitásokat MQTT Discovery-n keresztül:
+
+### Szenzorok
+
+**ESP32 Státusz:**
+- `sensor.esp32_wifi_signal` - WiFi jelerősség (dBm)
+- `sensor.esp32_memory_usage` - Memória használat (%)
+- `sensor.esp32_uptime` - ESP32 üzemidő
+- `sensor.esp32_active_pumps` - Aktív pumpák száma
+- `binary_sensor.esp32_online` - ESP32 kapcsolat állapot
+
+**Pumpa/Alapanyag Szenzorok (1-8):**
+- `sensor.pump_X_level` - Aktuális mennyiség (ml)
+  - Attributes: ingredient_name, current_ml, max_ml, percentage, is_alcoholic
+- `binary_sensor.pump_X_low_stock` - Alacsony készlet riasztás
+- `binary_sensor.pump_X_empty` - Üres palack riasztás
+
+**Utolsó adagolás:**
+- `sensor.last_dispensed_drink` - Utoljára készített ital neve
+  - Attributes: recipe_name, timestamp, duration_seconds, total_ml, time_ago
+
+**Rendszer riasztások:**
+- `binary_sensor.system_low_stock_alert` - Van-e bármely alacsony készlet
+- `binary_sensor.system_empty_bottle_alert` - Van-e üres palack
+
+### Automációk példák
+
+**Értesítés alacsony készlet esetén:**
+```yaml
+automation:
+  - alias: "IntelliVend - Low Stock Alert"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.system_low_stock_alert
+        to: "on"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "IntelliVend Riasztás"
+          message: "Alacsony alapanyag készlet!"
+```
+
+**Napi összegző:**
+```yaml
+automation:
+  - alias: "IntelliVend - Daily Summary"
+    trigger:
+      - platform: time
+        at: "23:00:00"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "IntelliVend Napzáró"
+          message: "Utolsó ital: {{ states('sensor.last_dispensed_drink') }}"
+```
+
+### Dashboard Kártya Példa
+
+```yaml
+type: entities
+title: IntelliVend
+entities:
+  - entity: binary_sensor.esp32_online
+    name: ESP32 Kapcsolat
+  - entity: sensor.esp32_wifi_signal
+    name: WiFi Jel
+  - entity: sensor.pump_1_level
+    name: Vodka
+  - entity: sensor.pump_2_level
+    name: Gin
+  - entity: sensor.last_dispensed_drink
+    name: Utolsó ital
+  - entity: binary_sensor.system_low_stock_alert
+    name: Készlet Riasztás
+```
 
 ## Támogatás
 

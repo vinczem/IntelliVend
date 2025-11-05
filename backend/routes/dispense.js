@@ -5,6 +5,19 @@ const logger = require('../config/logger');
 const mqttClient = require('../config/mqtt');
 const emailService = require('../services/emailService');
 
+// Lazy load HA service
+let haService = null;
+const getHAService = () => {
+  if (!haService) {
+    try {
+      haService = require('../services/homeassistantService');
+    } catch (e) {
+      // Service not available
+    }
+  }
+  return haService;
+};
+
 // Promise wrappers for database operations
 function dbQueryPromise(query, params) {
   return new Promise((resolve, reject) => {
@@ -263,6 +276,23 @@ router.put('/status/:log_id', (req, res) => {
     }
     
     logger.info(`Dispensing ${status}: Log ID ${req.params.log_id}`);
+    
+    // Update Home Assistant last dispense sensor on completion
+    if (status === 'completed') {
+      const ha = getHAService();
+      if (ha) {
+        db.query(`
+          SELECT recipe_name, started_at, duration_seconds, total_volume_ml
+          FROM dispensing_log
+          WHERE id = ?
+        `, [req.params.log_id], async (err, results) => {
+          if (!err && results.length > 0) {
+            await ha.updateLastDispense(results[0]);
+          }
+        });
+      }
+    }
+    
     res.json({ message: 'Status updated successfully' });
   });
 });

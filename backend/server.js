@@ -13,6 +13,7 @@ const path = require('path');
 const db = require('./config/database');
 const logger = require('./config/logger');
 const mqttClient = require('./config/mqtt');
+const haService = require('./services/homeassistantService');
 
 const app = express();
 const server = http.createServer(app);
@@ -129,7 +130,7 @@ app.locals.io = io;
 mqttClient.setWebSocket(io);
 
 // Server indítása
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   logger.info(`IntelliVend API server listening on port ${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`MQTT: ${mqttClient.isConnected() ? 'Connected' : 'Disabled'}`);
@@ -181,11 +182,55 @@ server.listen(PORT, () => {
       logger.info('🔧 Maintenance log table ready');
     }
   });
+
+  // Initialize Home Assistant MQTT Discovery (if MQTT is enabled)
+  if (mqttClient.isConnected()) {
+    setTimeout(async () => {
+      await haService.setAvailable(true);
+      await haService.initializeDiscovery();
+      
+      // Initial pump status update
+      db.query(`
+        SELECT p.id as pump_id, inv.current_quantity, inv.bottle_size, inv.min_quantity_alert,
+               i.name as ingredient_name, i.alcohol_percentage > 0 as is_alcoholic
+        FROM pumps p
+        LEFT JOIN inventory inv ON p.id = inv.pump_id
+        LEFT JOIN ingredients i ON p.ingredient_id = i.id
+      `, async (err, pumps) => {
+        if (!err && pumps) {
+          for (const pump of pumps) {
+            await haService.updatePumpStatus(pump.pump_id, pump);
+          }
+          await haService.updateSystemAlerts(pumps);
+          
+          // Update last dispense sensor with most recent completed dispense
+          db.query(`
+            SELECT recipe_name, started_at, duration_seconds, total_volume_ml
+            FROM dispensing_log
+            WHERE status = 'completed'
+            ORDER BY completed_at DESC
+            LIMIT 1
+          `, async (err, results) => {
+            if (!err && results && results.length > 0) {
+              await haService.updateLastDispense(results[0]);
+              logger.info('✅ HA initial state updated');
+            }
+          });
+        }
+      });
+    }, 2000); // Wait 2s for MQTT to be fully ready
+  }
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   logger.info('SIGTERM signal received: closing HTTP server');
+  
+  // Set HA availability to offline
+  if (mqttClient.isConnected()) {
+    await haService.setAvailable(false);
+  }
+  
   server.close(() => {
     logger.info('HTTP server closed');
     mqttClient.disconnect();
@@ -196,8 +241,14 @@ process.on('SIGTERM', () => {
   });
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   logger.info('SIGINT signal received: closing HTTP server');
+  
+  // Set HA availability to offline
+  if (mqttClient.isConnected()) {
+    await haService.setAvailable(false);
+  }
+  
   server.close(() => {
     logger.info('HTTP server closed');
     mqttClient.disconnect();

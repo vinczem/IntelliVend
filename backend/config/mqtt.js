@@ -1,6 +1,15 @@
 const mqtt = require('mqtt');
 const logger = require('./logger');
 
+// Lazy load to avoid circular dependency
+let haService = null;
+const getHAService = () => {
+  if (!haService) {
+    haService = require('../services/homeassistantService');
+  }
+  return haService;
+};
+
 class MQTTClient {
   constructor() {
     this.client = null;
@@ -280,6 +289,13 @@ class MQTTClient {
         firmware_version: payload.firmware_version,
         timestamp: payload.timestamp
       });
+    }
+    
+    // Update Home Assistant
+    try {
+      getHAService().updateESP32Status(payload);
+    } catch (error) {
+      logger.debug('HA service not ready yet:', error.message);
     }
     
     // Check WiFi signal

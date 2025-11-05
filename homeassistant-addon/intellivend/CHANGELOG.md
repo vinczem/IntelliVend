@@ -2,6 +2,26 @@
 
 All notable changes to this add-on will be documented in this file.
 
+## [1.0.15] - 2025-11-05
+
+### Added
+- **Home Assistant MQTT Discovery**: Automatikus entitások létrehozása
+  - ESP32 státusz szenzorok (WiFi, memória, üzemidő, aktív pumpák)
+  - Pumpa/alapanyag szenzorok (készlet szintek, 1-8 pumpához)
+  - Utolsó adagolás szenzor
+  - Bináris riasztás szenzorok (alacsony készlet, üres palack)
+  - ESP32 online/offline kapcsolat állapot
+- **Email service konfiguráció**: SMTP beállítások az addon konfigurációban
+  - smtp_host, smtp_port, smtp_user, smtp_password, alert_email
+- Automatikus szenzor frissítések:
+  - ESP32 heartbeat üzenetekkor
+  - Készlet változásakor (refill, dispense)
+  - Adagolás befejezésekor
+- Dokumentáció frissítve HA integráció példákkal (automációk, dashboard)
+
+### Fixed
+- Email értesítések most működnek a HA addon verzióban is
+
 ## [1.0.3] - 2025-11-05
 
 ### Fixed

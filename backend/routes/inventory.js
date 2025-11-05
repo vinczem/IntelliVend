@@ -2,6 +2,19 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 
+// Lazy load HA service
+let haService = null;
+const getHAService = () => {
+  if (!haService) {
+    try {
+      haService = require('../services/homeassistantService');
+    } catch (e) {
+      // Service not available
+    }
+  }
+  return haService;
+};
+
 // GET inventory status
 router.get('/', (req, res) => {
   const query = `
@@ -93,6 +106,37 @@ router.put('/refill/:pump_id', (req, res) => {
               });
             }
             connection.release();
+            
+            // Update Home Assistant
+            const ha = getHAService();
+            if (ha) {
+              db.query(`
+                SELECT p.id as pump_id, inv.current_quantity, inv.bottle_size, inv.min_quantity_alert,
+                       i.name as ingredient_name, i.alcohol_percentage > 0 as is_alcoholic
+                FROM pumps p
+                LEFT JOIN inventory inv ON p.id = inv.pump_id
+                LEFT JOIN ingredients i ON p.ingredient_id = i.id
+                WHERE p.id = ?
+              `, [req.params.pump_id], async (err, results) => {
+                if (!err && results.length > 0) {
+                  await ha.updatePumpStatus(req.params.pump_id, results[0]);
+                  
+                  // Update system alerts
+                  db.query(`
+                    SELECT p.id as pump_id, inv.current_quantity, inv.bottle_size, inv.min_quantity_alert,
+                           i.name as ingredient_name, i.alcohol_percentage > 0 as is_alcoholic
+                    FROM pumps p
+                    LEFT JOIN inventory inv ON p.id = inv.pump_id
+                    LEFT JOIN ingredients i ON p.ingredient_id = i.id
+                  `, async (err, allPumps) => {
+                    if (!err && allPumps) {
+                      await ha.updateSystemAlerts(allPumps);
+                    }
+                  });
+                }
+              });
+            }
+            
             res.json({ message: 'Bottle refilled successfully' });
           });
         });
