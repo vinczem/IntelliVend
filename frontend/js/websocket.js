@@ -3,10 +3,10 @@
  * 
  * Handles Socket.IO connection to backend for real-time ESP32 updates
  * 
- * VERSION: 1.0.5
+ * VERSION: 1.0.9
  */
 
-console.log('🚀 websocket.js loaded! VERSION: 1.0.5');
+console.log('🚀 websocket.js loaded! VERSION: 1.0.9');
 
 class WebSocketClient {
   constructor() {
@@ -27,25 +27,34 @@ class WebSocketClient {
   connect() {
     // Detect WebSocket URL based on current location
     let serverUrl;
-    const path = window.location.pathname;
+    let socketPath;
+    const pathname = window.location.pathname;
     
-    console.log('Debug - window.location.pathname:', path);
+    console.log('Debug - window.location.pathname:', pathname);
     console.log('Debug - window.location.origin:', window.location.origin);
     
-    if (path.includes('/api/hassio_ingress/')) {
+    if (pathname.includes('/api/hassio_ingress/')) {
       // Running through Home Assistant Ingress
-      const ingressMatch = path.match(/^(\/api\/hassio_ingress\/[^\/]+)/);
+      const ingressMatch = pathname.match(/^(\/api\/hassio_ingress\/[^\/]+)/);
       const ingressBase = ingressMatch ? ingressMatch[1] : '';
-      serverUrl = window.location.origin + ingressBase;
+      
+      // For Ingress, we need to use the origin WITHOUT the ingress path in URL
+      // but the path MUST include the ingress base + /socket.io
+      serverUrl = window.location.origin;
+      socketPath = ingressBase + '/socket.io';
+      
       console.log('Debug - Ingress detected, base:', ingressBase);
+      console.log('Debug - Socket.IO path will be:', socketPath);
     } else {
       // Direct access or development mode
       serverUrl = window.location.origin;
+      socketPath = '/socket.io';
       console.log('Debug - Direct access mode');
+      console.log('Debug - Socket.IO path will be:', socketPath);
     }
     
-    console.log('🔌 Connecting to WebSocket:', serverUrl);
-    console.log('🔌 Socket.IO path will be: /socket.io');
+    console.log('🔌 Connecting to WebSocket server:', serverUrl);
+    console.log('🔌 Socket.IO path:', socketPath);
     
     // Load Socket.IO library dynamically
     const script = document.createElement('script');
@@ -53,7 +62,7 @@ class WebSocketClient {
     script.onload = () => {
       console.log('✅ Socket.IO library loaded');
       this.socket = io(serverUrl, {
-        path: '/socket.io',
+        path: socketPath,
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionDelay: 1000,
