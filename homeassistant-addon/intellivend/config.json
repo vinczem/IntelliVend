@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "slug": "intellivend",
   "description": "Intelligens italautomata rendszer",
-  "url": "https://github.com/yourusername/IntelliVend",
+  "url": "https://github.com/vinczem/IntelliVend",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
   "startup": "application",
   "boot": "auto",
