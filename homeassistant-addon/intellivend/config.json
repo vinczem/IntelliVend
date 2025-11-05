@@ -49,6 +49,5 @@
     "mqtt_user": "str?",
     "mqtt_password": "password?",
     "log_level": "list(debug|info|warning|error)"
-  },
-  "image": "ghcr.io/{arch}-intellivend"
+  }
 }

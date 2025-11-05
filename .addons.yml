@@ -1,0 +1,7 @@
+---
+channel: stable
+addons:
+  intellivend:
+    repository: vinczem/IntelliVend
+    target: homeassistant-addon/intellivend
+    image: ghcr.io/vinczem/intellivend-{arch}
