@@ -12,14 +12,16 @@ if [ ! -d "/data/mysql/mysql" ]; then
     MYSQL_PID=$!
     
     # Wait for MySQL to start
-    for i in {30..0}; do
+    timeout=30
+    while [ $timeout -gt 0 ]; do
         if mysqladmin ping --silent 2>/dev/null; then
             break
         fi
+        timeout=$((timeout - 1))
         sleep 1
     done
     
-    if [ "$i" = 0 ]; then
+    if [ $timeout -eq 0 ]; then
         bashio::log.error "MySQL initialization failed!"
         kill $MYSQL_PID 2>/dev/null
         exit 1

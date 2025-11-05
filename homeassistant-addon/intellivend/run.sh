@@ -3,7 +3,9 @@
 # Enable error handling
 set -e
 
+bashio::log.info "********************************"
 bashio::log.info "Starting IntelliVend Add-on..."
+bashio::log.info "********************************"
 
 # Start MySQL server
 bashio::log.info "Starting MySQL server..."
@@ -12,14 +14,16 @@ MYSQL_PID=$!
 
 # Wait for MySQL to be ready
 bashio::log.info "Waiting for MySQL to be ready..."
-for i in {30..0}; do
+timeout=30
+while [ $timeout -gt 0 ]; do
     if mysqladmin ping --silent 2>/dev/null; then
         break
     fi
+    timeout=$((timeout - 1))
     sleep 1
 done
 
-if [ "$i" = 0 ]; then
+if [ $timeout -eq 0 ]; then
     bashio::log.error "MySQL failed to start!"
     exit 1
 fi
