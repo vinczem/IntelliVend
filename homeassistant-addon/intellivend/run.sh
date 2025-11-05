@@ -4,6 +4,15 @@ bashio::log.info "================================"
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting IntelliVend Add-on..."
 bashio::log.info "================================"
 
+# Ensure MySQL data directory exists
+if ! test -d "/data/mysql"; then
+    bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Creating MySQL data directory..."
+    mkdir -p /data/mysql
+    chown -R mysql:mysql /data/mysql
+else
+    bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] MySQL data directory exists."
+fi
+
 # Start MySQL server
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting MySQL server..."
 mysqld --user=mysql --datadir=/data/mysql &
