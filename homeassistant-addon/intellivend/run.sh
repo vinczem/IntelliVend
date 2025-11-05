@@ -106,7 +106,7 @@ cat > /app/backend/.env << EOF
 NODE_ENV=production
 PORT=3000
 
-DB_HOST=localhost
+DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_NAME=intellivend
 DB_USER=intellivend

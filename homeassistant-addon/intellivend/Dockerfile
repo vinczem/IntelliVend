@@ -10,7 +10,8 @@ RUN apk add --no-cache \
     mysql-client \
     curl \
     git \
-    bash
+    bash \
+    openssl
 
 # Set working directory
 WORKDIR /tmp
