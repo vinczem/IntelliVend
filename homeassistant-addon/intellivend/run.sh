@@ -128,9 +128,7 @@ bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Configuring frontend..."
 cat > /app/frontend/js/config.js << EOF
 // API configuration
 const API_CONFIG = {
-    baseURL: window.location.pathname.includes('/api/hassio_ingress/') 
-        ? window.location.pathname.split('/api/hassio_ingress/')[0] + '/api'
-        : '/api',
+    baseURL: '/api',
     timeout: 10000
 };
 EOF

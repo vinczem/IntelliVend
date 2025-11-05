@@ -1,7 +1,7 @@
 // API functions
 const API = {
     baseURL: API_CONFIG.baseURL,
-    staticURL: `http://${window.location.hostname}:3000`,
+    staticURL: '',  // Use relative paths for static files
     
     async fetch(endpoint, options = {}) {
         const url = `${API_CONFIG.baseURL}${endpoint}`;
