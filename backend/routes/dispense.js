@@ -236,6 +236,42 @@ router.post('/', async (req, res) => {
       // Check for low stock after dispensing (non-blocking)
       setImmediate(() => checkLowStock(ingredients));
       
+      // Update Home Assistant pump sensors (non-blocking)
+      setImmediate(async () => {
+        const ha = getHAService();
+        if (ha) {
+          try {
+            // Update affected pumps
+            for (const ing of adjustedIngredients) {
+              const pumpData = await dbQueryPromise(`
+                SELECT p.id as pump_id, inv.current_quantity, inv.bottle_size, inv.min_quantity_alert,
+                       i.name as ingredient_name, i.alcohol_percentage > 0 as is_alcoholic
+                FROM pumps p
+                LEFT JOIN inventory inv ON p.id = inv.pump_id
+                LEFT JOIN ingredients i ON p.ingredient_id = i.id
+                WHERE p.id = ?
+              `, [ing.pump_id]);
+              
+              if (pumpData.length > 0) {
+                await ha.updatePumpStatus(ing.pump_id, pumpData[0]);
+              }
+            }
+            
+            // Update system alerts
+            const allPumps = await dbQueryPromise(`
+              SELECT p.id as pump_id, inv.current_quantity, inv.bottle_size, inv.min_quantity_alert,
+                     i.name as ingredient_name, i.alcohol_percentage > 0 as is_alcoholic
+              FROM pumps p
+              LEFT JOIN inventory inv ON p.id = inv.pump_id
+              LEFT JOIN ingredients i ON p.ingredient_id = i.id
+            `);
+            await ha.updateSystemAlerts(allPumps);
+          } catch (err) {
+            logger.error('Error updating HA sensors after dispense:', err);
+          }
+        }
+      });
+      
     } catch (error) {
       if (connection) {
         await rollbackPromise(connection);

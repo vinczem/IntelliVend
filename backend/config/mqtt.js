@@ -240,6 +240,21 @@ class MQTTClient {
           logger.error('Error updating dispensing log:', updateErr);
         } else {
           logger.info(`Dispensing log ${logId} marked as completed (${durationSeconds}s)`);
+          
+          // Update Home Assistant last dispense sensor
+          db.query(`
+            SELECT recipe_name, started_at, duration_seconds, total_volume_ml
+            FROM dispensing_log
+            WHERE id = ?
+          `, [logId], async (err, results) => {
+            if (!err && results && results.length > 0) {
+              const ha = getHAService();
+              if (ha) {
+                await ha.updateLastDispense(results[0]);
+                logger.debug('HA last dispense sensor updated');
+              }
+            }
+          });
         }
       });
     });
