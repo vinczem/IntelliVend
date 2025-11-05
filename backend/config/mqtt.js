@@ -49,6 +49,9 @@ class MQTTClient {
       this.subscribe('intellivend/maintenance/complete');      // Maintenance completion
       this.subscribe('intellivend/error');                     // Error messages
       this.subscribe('intellivend/heartbeat');                 // ESP32 health status
+      
+      // Initialize Home Assistant MQTT Discovery
+      this.initializeHomeAssistant();
     });
 
     this.client.on('error', (error) => {
@@ -355,6 +358,54 @@ class MQTTClient {
 
     await this.publish('intellivend/emergency/stop', message, { qos: 2 });
     logger.warn(`Emergency stop commanded: ${reason}`);
+  }
+
+  async initializeHomeAssistant() {
+    try {
+      // Import db here to avoid circular dependency
+      const db = require('./database');
+      const haService = getHAService();
+      
+      logger.info('🏠 Initializing Home Assistant integration...');
+      
+      // Set availability
+      await haService.setAvailable(true);
+      
+      // Initialize discovery
+      await haService.initializeDiscovery();
+      
+      // Initial pump status update
+      db.query(`
+        SELECT p.id as pump_id, inv.current_quantity, inv.bottle_size, inv.min_quantity_alert,
+               i.name as ingredient_name, i.alcohol_percentage > 0 as is_alcoholic
+        FROM pumps p
+        LEFT JOIN inventory inv ON p.id = inv.pump_id
+        LEFT JOIN ingredients i ON p.ingredient_id = i.id
+      `, async (err, pumps) => {
+        if (!err && pumps) {
+          for (const pump of pumps) {
+            await haService.updatePumpStatus(pump.pump_id, pump);
+          }
+          await haService.updateSystemAlerts(pumps);
+          
+          // Update last dispense sensor with most recent completed dispense
+          db.query(`
+            SELECT recipe_name, started_at, duration_seconds, total_volume_ml
+            FROM dispensing_log
+            WHERE status = 'completed'
+            ORDER BY completed_at DESC
+            LIMIT 1
+          `, async (err, results) => {
+            if (!err && results && results.length > 0) {
+              await haService.updateLastDispense(results[0]);
+            }
+            logger.info('✅ Home Assistant integration initialized');
+          });
+        }
+      });
+    } catch (error) {
+      logger.error('❌ Error initializing Home Assistant:', error);
+    }
   }
 
   disconnect() {
