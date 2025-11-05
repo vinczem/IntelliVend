@@ -15,6 +15,41 @@ const getHAService = () => {
   return haService;
 };
 
+/**
+ * @swagger
+ * /api/inventory:
+ *   get:
+ *     summary: Készlet állapot lekérése
+ *     description: Összes pumpa készletállapota a töltöttségi százalékkal és riasztási státusszal
+ *     tags: [Inventory]
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   pump_id:
+ *                     type: integer
+ *                   pump_number:
+ *                     type: integer
+ *                   ingredient_name:
+ *                     type: string
+ *                   current_quantity:
+ *                     type: number
+ *                   bottle_size:
+ *                     type: number
+ *                   fill_percentage:
+ *                     type: number
+ *                   status:
+ *                     type: string
+ *                     enum: [ok, warning, low, empty]
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // GET inventory status
 router.get('/', (req, res) => {
   const query = `
@@ -40,6 +75,41 @@ router.get('/', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/inventory/refill/{pump_id}:
+ *   put:
+ *     summary: Palack újratöltése
+ *     description: Egy pumpa palackjának újratöltése új mérettel vagy mennyiséggel
+ *     tags: [Inventory]
+ *     parameters:
+ *       - in: path
+ *         name: pump_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: A pumpa ID-ja
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               bottle_size:
+ *                 type: integer
+ *                 example: 1000
+ *                 description: Új palack méret ml-ben (opcionális)
+ *               quantity:
+ *                 type: integer
+ *                 example: 750
+ *                 description: Újratöltött mennyiség ml-ben (opcionális)
+ *     responses:
+ *       200:
+ *         description: Újratöltés sikeres
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // PUT refill bottle
 router.put('/refill/:pump_id', (req, res) => {
   const { bottle_size, quantity } = req.body;
@@ -145,6 +215,43 @@ router.put('/refill/:pump_id', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/inventory/settings/{pump_id}:
+ *   put:
+ *     summary: Készlet beállítások módosítása
+ *     description: Palack méret és minimális készlet riasztási szint frissítése
+ *     tags: [Inventory]
+ *     parameters:
+ *       - in: path
+ *         name: pump_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: A pumpa ID-ja
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               bottle_size:
+ *                 type: integer
+ *                 example: 1000
+ *                 description: Palack mérete ml-ben
+ *               min_quantity_alert:
+ *                 type: integer
+ *                 example: 100
+ *                 description: Minimális mennyiség riasztáshoz ml-ben
+ *     responses:
+ *       200:
+ *         description: Beállítások sikeresen frissítve
+ *       404:
+ *         description: Inventory nem található
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // PUT update inventory settings (bottle_size, min_quantity_alert)
 router.put('/settings/:pump_id', (req, res) => {
   const { bottle_size, min_quantity_alert } = req.body;
@@ -171,6 +278,28 @@ router.put('/settings/:pump_id', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/inventory/refill-all:
+ *   put:
+ *     summary: Összes palack újratöltése
+ *     description: Minden aktív pumpa palackjának teljes újratöltése egyszerre
+ *     tags: [Inventory]
+ *     responses:
+ *       200:
+ *         description: Összes palack sikeresen újratöltve
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 refilled:
+ *                   type: integer
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // PUT bulk refill (all pumps)
 router.put('/refill-all', (req, res) => {
   db.getConnection((err, connection) => {

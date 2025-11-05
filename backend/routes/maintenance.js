@@ -11,6 +11,48 @@ function setMqttClient(client) {
 }
 
 /**
+ * @swagger
+ * /api/maintenance/flush/{pump_id}:
+ *   post:
+ *     summary: Pumpa öblítése
+ *     description: Egy pumpa öblítése vízzel megadott ideig
+ *     tags: [Maintenance]
+ *     parameters:
+ *       - in: path
+ *         name: pump_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: A pumpa ID-ja
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               duration_ms:
+ *                 type: integer
+ *                 default: 5000
+ *                 minimum: 1000
+ *                 maximum: 30000
+ *                 example: 5000
+ *                 description: Öblítés időtartama milliszekundumban
+ *               notes:
+ *                 type: string
+ *                 example: Tisztítás után
+ *                 description: Jegyzetek
+ *     responses:
+ *       200:
+ *         description: Öblítés sikeresen elindítva
+ *       400:
+ *         description: Érvénytelen paraméterek
+ *       404:
+ *         description: Pumpa nem található
+ *       500:
+ *         description: Szerver hiba
+ */
+/**
  * POST /api/maintenance/flush/:pump_id
  * Flush a single pump with water
  */
@@ -72,6 +114,41 @@ router.post('/flush/:pump_id', async (req, res) => {
 });
 
 /**
+ * @swagger
+ * /api/maintenance/flush-all:
+ *   post:
+ *     summary: Összes pumpa öblítése
+ *     description: Az összes aktív pumpa öblítése egyszerre
+ *     tags: [Maintenance]
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               duration_ms:
+ *                 type: integer
+ *                 default: 5000
+ *                 minimum: 1000
+ *                 maximum: 30000
+ *                 example: 5000
+ *                 description: Öblítés időtartama milliszekundumban
+ *               notes:
+ *                 type: string
+ *                 default: Bulk flush
+ *                 description: Jegyzetek
+ *     responses:
+ *       200:
+ *         description: Öblítés sikeresen elindítva
+ *       400:
+ *         description: Érvénytelen paraméterek
+ *       404:
+ *         description: Nincs aktív pumpa
+ *       500:
+ *         description: Szerver hiba
+ */
+/**
  * POST /api/maintenance/flush-all
  * Flush all active pumps sequentially
  */
@@ -131,6 +208,34 @@ router.post('/flush-all', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/maintenance/history/{pump_id}:
+ *   get:
+ *     summary: Pumpa karbantartási előzmények
+ *     description: Egy pumpa karbantartási előzményeinek lekérése
+ *     tags: [Maintenance]
+ *     parameters:
+ *       - in: path
+ *         name: pump_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: A pumpa ID-ja
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Lekérendő rekordok maximális száma
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *       400:
+ *         description: Érvénytelen pumpa ID
+ *       500:
+ *         description: Adatbázis hiba
+ */
 /**
  * GET /api/maintenance/history/:pump_id
  * Get maintenance history for a specific pump

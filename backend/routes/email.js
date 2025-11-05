@@ -3,6 +3,30 @@ const router = express.Router();
 const emailService = require('../services/emailService');
 const db = require('../config/database');
 
+/**
+ * @swagger
+ * /api/email/test:
+ *   post:
+ *     summary: Teszt email küldése
+ *     description: Teszt email küldése az email szolgáltatás működésének ellenőrzésére
+ *     tags: [Email]
+ *     responses:
+ *       200:
+ *         description: Email sikeresen elküldve
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 success:
+ *                   type: boolean
+ *                 messageId:
+ *                   type: string
+ *       500:
+ *         description: Email küldési hiba
+ */
 // POST /api/email/test - Send test email
 router.post('/test', async (req, res) => {
     try {
@@ -29,6 +53,39 @@ router.post('/test', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/email/notifications:
+ *   get:
+ *     summary: Email értesítések előzményei
+ *     description: Elküldött email értesítések listája
+ *     tags: [Email]
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   alert_id:
+ *                     type: integer
+ *                   email_to:
+ *                     type: string
+ *                   sent_at:
+ *                     type: string
+ *                     format: date-time
+ *                   alert_message:
+ *                     type: string
+ *                   severity:
+ *                     type: string
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // GET /api/email/notifications - Get email notification history
 router.get('/notifications', (req, res) => {
     const query = `
@@ -47,6 +104,37 @@ router.get('/notifications', (req, res) => {
     });
 });
 
+/**
+ * @swagger
+ * /api/email/config:
+ *   get:
+ *     summary: Email konfiguráció állapota
+ *     description: SMTP konfiguráció állapotának lekérése (jelszavak rejtve)
+ *     tags: [Email]
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 smtp_host:
+ *                   type: string
+ *                 smtp_port:
+ *                   type: string
+ *                 smtp_user:
+ *                   type: string
+ *                   description: Felhasználónév vagy '***configured***'
+ *                 smtp_password:
+ *                   type: string
+ *                   description: Mindig rejtve vagy 'not configured'
+ *                 alert_email:
+ *                   type: string
+ *                 service_ready:
+ *                   type: boolean
+ *                   description: Email szolgáltatás használatra kész-e
+ */
 // GET /api/email/config - Get email configuration status
 router.get('/config', (req, res) => {
     const config = {

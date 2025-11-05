@@ -38,6 +38,24 @@ const upload = multer({
     }
 });
 
+/**
+ * @swagger
+ * /api/backup/export:
+ *   get:
+ *     summary: Adatbázis exportálása
+ *     description: Teljes adatbázis exportálása SQL fájlba és letöltése
+ *     tags: [Backup]
+ *     responses:
+ *       200:
+ *         description: SQL backup fájl letöltése
+ *         content:
+ *           application/sql:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       500:
+ *         description: Backup hiba
+ */
 // GET /api/backup/export - Export database to SQL file
 router.get('/export', async (req, res) => {
     try {
@@ -210,6 +228,32 @@ async function exportDatabaseNodeJS(filepath, host, user, password, database) {
     });
 }
 
+/**
+ * @swagger
+ * /api/backup/import:
+ *   post:
+ *     summary: Adatbázis visszaállítása
+ *     description: Adatbázis visszaállítása feltöltött SQL fájlból
+ *     tags: [Backup]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               sqlFile:
+ *                 type: string
+ *                 format: binary
+ *                 description: SQL backup fájl (max 100MB)
+ *     responses:
+ *       200:
+ *         description: Adatbázis sikeresen visszaállítva
+ *       400:
+ *         description: Hiányzó fájl
+ *       500:
+ *         description: Visszaállítási hiba
+ */
 // POST /api/backup/import - Import database from SQL file
 router.post('/import', upload.single('sqlFile'), async (req, res) => {
     try {

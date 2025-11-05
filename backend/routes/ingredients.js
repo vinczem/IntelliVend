@@ -3,6 +3,29 @@ const router = express.Router();
 const db = require('../config/database');
 const { body, validationResult } = require('express-validator');
 
+/**
+ * @swagger
+ * /api/ingredients:
+ *   get:
+ *     summary: Összes alapanyag lekérése
+ *     description: Visszaadja az összes alapanyagot ABC sorrendben
+ *     tags: [Ingredients]
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Ingredient'
+ *       500:
+ *         description: Adatbázis hiba
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // GET all ingredients
 router.get('/', (req, res) => {
   const query = 'SELECT * FROM ingredients ORDER BY name';
@@ -15,6 +38,32 @@ router.get('/', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/ingredients/{id}:
+ *   get:
+ *     summary: Egy alapanyag lekérése ID alapján
+ *     description: Visszaad egy konkrét alapanyagot az ID alapján
+ *     tags: [Ingredients]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Az alapanyag ID-ja
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Ingredient'
+ *       404:
+ *         description: Alapanyag nem található
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // GET ingredient by ID
 router.get('/:id', (req, res) => {
   const query = 'SELECT * FROM ingredients WHERE id = ?';
@@ -30,6 +79,64 @@ router.get('/:id', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/ingredients:
+ *   post:
+ *     summary: Új alapanyag létrehozása
+ *     description: Új alapanyagot hoz létre a rendszerben
+ *     tags: [Ingredients]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - type
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Gin
+ *               description:
+ *                 type: string
+ *                 example: London Dry Gin
+ *               type:
+ *                 type: string
+ *                 enum: [alcohol, non-alcohol, mixer, syrup, juice, other]
+ *                 example: alcohol
+ *               alcohol_percentage:
+ *                 type: number
+ *                 format: float
+ *                 minimum: 0
+ *                 maximum: 100
+ *                 example: 37.5
+ *               unit:
+ *                 type: string
+ *                 enum: [ml, cl, l]
+ *                 example: ml
+ *               cost_per_unit:
+ *                 type: number
+ *                 format: float
+ *                 example: 3.5
+ *     responses:
+ *       201:
+ *         description: Alapanyag sikeresen létrehozva
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 id:
+ *                   type: integer
+ *       400:
+ *         description: Validációs hiba
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // POST new ingredient
 router.post('/',
   [
@@ -55,6 +162,64 @@ router.post('/',
   }
 );
 
+/**
+ * @swagger
+ * /api/ingredients/{id}:
+ *   put:
+ *     summary: Alapanyag módosítása
+ *     description: Meglévő alapanyag adatainak frissítése
+ *     tags: [Ingredients]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Az alapanyag ID-ja
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Vodka
+ *               description:
+ *                 type: string
+ *                 example: Premium Vodka
+ *               type:
+ *                 type: string
+ *                 enum: [alcohol, non-alcohol, mixer, syrup, juice, other]
+ *               alcohol_percentage:
+ *                 type: number
+ *                 format: float
+ *                 minimum: 0
+ *                 maximum: 100
+ *               unit:
+ *                 type: string
+ *                 enum: [ml, cl, l]
+ *               cost_per_unit:
+ *                 type: number
+ *                 format: float
+ *     responses:
+ *       200:
+ *         description: Alapanyag sikeresen frissítve
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Validációs hiba vagy nincs frissítendő mező
+ *       404:
+ *         description: Alapanyag nem található
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // PUT update ingredient
 router.put('/:id',
   [
@@ -115,6 +280,35 @@ router.put('/:id',
   }
 );
 
+/**
+ * @swagger
+ * /api/ingredients/{id}:
+ *   delete:
+ *     summary: Alapanyag törlése
+ *     description: Alapanyag törlése az adatbázisból
+ *     tags: [Ingredients]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: A törlendő alapanyag ID-ja
+ *     responses:
+ *       200:
+ *         description: Alapanyag sikeresen törölve
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: Alapanyag nem található
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // DELETE ingredient
 router.delete('/:id', (req, res) => {
   const query = 'DELETE FROM ingredients WHERE id = ?';

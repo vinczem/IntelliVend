@@ -72,6 +72,57 @@ function rollbackPromise(connection) {
   });
 }
 
+/**
+ * @swagger
+ * /api/dispense:
+ *   post:
+ *     summary: Ital adagolása
+ *     description: Ital elkészítése és adagolása a recept alapján MQTT üzenetekkel
+ *     tags: [Dispense]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - recipe_id
+ *             properties:
+ *               recipe_id:
+ *                 type: integer
+ *                 example: 1
+ *                 description: A recept ID-ja
+ *               strength:
+ *                 type: string
+ *                 enum: [weak, normal, strong]
+ *                 default: normal
+ *                 example: normal
+ *                 description: Ital erőssége (gyenge/normál/erős)
+ *     responses:
+ *       200:
+ *         description: Adagolás sikeresen elindítva
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 log_id:
+ *                   type: integer
+ *                 message:
+ *                   type: string
+ *                 recipe_name:
+ *                   type: string
+ *                 steps:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       400:
+ *         description: Hiányzó vagy inkompatibilis alapanyag
+ *       404:
+ *         description: Recept nem található
+ *       500:
+ *         description: Szerver hiba
+ */
 // POST dispense a drink
 router.post('/', async (req, res) => {
   const { recipe_id, strength = 'normal' } = req.body; // strength: weak, normal, strong
@@ -290,6 +341,44 @@ router.post('/', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/dispense/status/{log_id}:
+ *   put:
+ *     summary: Adagolási státusz frissítése
+ *     description: ESP32 által hívott endpoint az adagolás állapotának frissítéséhez
+ *     tags: [Dispense]
+ *     parameters:
+ *       - in: path
+ *         name: log_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: A dispensing log ID-ja
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, dispensing, completed, failed, cancelled]
+ *                 example: completed
+ *               error_message:
+ *                 type: string
+ *                 example: Pump 3 timeout
+ *     responses:
+ *       200:
+ *         description: Státusz sikeresen frissítve
+ *       404:
+ *         description: Dispensing log nem található
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // PUT update dispensing status (called by ESP32)
 router.put('/status/:log_id', (req, res) => {
   const { status, error_message } = req.body;
@@ -333,6 +422,53 @@ router.put('/status/:log_id', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/dispense/history:
+ *   get:
+ *     summary: Adagolási előzmények lekérése
+ *     description: Legutóbbi adagolások listája részletekkel
+ *     tags: [Dispense]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Lekérendő rekordok maximális száma
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   recipe_id:
+ *                     type: integer
+ *                   recipe_name:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *                   started_at:
+ *                     type: string
+ *                     format: date-time
+ *                   completed_at:
+ *                     type: string
+ *                     format: date-time
+ *                   duration_seconds:
+ *                     type: integer
+ *                   total_volume_ml:
+ *                     type: number
+ *                   ingredients:
+ *                     type: string
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // GET dispensing history
 router.get('/history', (req, res) => {
   const limit = parseInt(req.query.limit) || 50;

@@ -10,6 +10,8 @@ const morgan = require('morgan');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 const db = require('./config/database');
 const logger = require('./config/logger');
 const mqttClient = require('./config/mqtt');
@@ -52,6 +54,12 @@ app.use((req, res, next) => {
 // Static file serving for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'IntelliVend API Documentation'
+}));
+
 // Routes
 app.use('/api/ingredients', require('./routes/ingredients'));
 app.use('/api/pumps', require('./routes/pumps'));
@@ -68,6 +76,44 @@ const maintenanceRoutes = require('./routes/maintenance');
 maintenanceRoutes.setMqttClient(mqttClient);
 app.use('/api/maintenance', maintenanceRoutes);
 
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Ellenőrzi a rendszer és az adatbázis kapcsolat állapotát
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Rendszer működik
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: healthy
+ *                 database:
+ *                   type: string
+ *                   example: connected
+ *                 version:
+ *                   type: string
+ *                   example: 1.0.17
+ *       503:
+ *         description: Rendszer nem elérhető
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: unhealthy
+ *                 database:
+ *                   type: string
+ *                   example: disconnected
+ */
 // Health check endpoint
 app.get('/health', (req, res) => {
   db.query('SELECT 1', (err) => {
@@ -75,7 +121,7 @@ app.get('/health', (req, res) => {
       logger.error('Database health check failed:', err);
       return res.status(503).json({ status: 'unhealthy', database: 'disconnected' });
     }
-    res.json({ status: 'healthy', database: 'connected', version: '1.0.0' });
+    res.json({ status: 'healthy', database: 'connected', version: '1.0.17' });
   });
 });
 

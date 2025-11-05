@@ -2,6 +2,48 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 
+/**
+ * @swagger
+ * /api/stats:
+ *   get:
+ *     summary: Általános statisztikák
+ *     description: Összesített rendszer statisztikák (összes ital, mennyiség, népszerű receptek, készlet, riasztások)
+ *     tags: [Stats]
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total_drinks:
+ *                   type: integer
+ *                 total_volume_ml:
+ *                   type: number
+ *                 popular_recipes:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       count:
+ *                         type: integer
+ *                 inventory:
+ *                   type: object
+ *                   properties:
+ *                     total_items:
+ *                       type: integer
+ *                     low_stock_items:
+ *                       type: integer
+ *                     empty_items:
+ *                       type: integer
+ *                 active_alerts:
+ *                   type: integer
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // GET statistics
 router.get('/', (req, res) => {
   const stats = {};
@@ -48,6 +90,42 @@ router.get('/', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/stats/daily:
+ *   get:
+ *     summary: Napi statisztikák
+ *     description: Naponta bontott statisztikák megadott időszakra
+ *     tags: [Stats]
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           default: 7
+ *         description: Hány napra visszamenőleg kérjük az adatokat
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   date:
+ *                     type: string
+ *                     format: date
+ *                   drinks_count:
+ *                     type: integer
+ *                   total_volume:
+ *                     type: number
+ *                   unique_recipes:
+ *                     type: integer
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // GET daily statistics
 router.get('/daily', (req, res) => {
   const days = parseInt(req.query.days) || 7;
@@ -73,6 +151,40 @@ router.get('/daily', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/stats/costs:
+ *   get:
+ *     summary: Költség analitika
+ *     description: Adagolási költségek összesítése megadott időszakra
+ *     tags: [Stats]
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           default: 30
+ *         description: Hány napra visszamenőleg kérjük az adatokat
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total_cost:
+ *                   type: number
+ *                   description: Összes költség
+ *                 drinks_count:
+ *                   type: integer
+ *                   description: Italok száma
+ *                 average_cost_per_drink:
+ *                   type: number
+ *                   description: Átlagos ital költség
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // GET cost analytics
 router.get('/costs', (req, res) => {
   const days = parseInt(req.query.days) || 30;

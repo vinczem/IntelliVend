@@ -5,6 +5,42 @@ const upload = require('../config/upload');
 const path = require('path');
 const fs = require('fs');
 
+/**
+ * @swagger
+ * /api/recipes:
+ *   get:
+ *     summary: Összes recept lekérése
+ *     description: Receptek lekérése szűrési lehetőségekkel (kategória, alkoholos, elérhető)
+ *     tags: [Recipes]
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *           enum: [classic, modern, shooter, mocktail, tropical, seasonal]
+ *         description: Kategória szerinti szűrés
+ *       - in: query
+ *         name: is_alcoholic
+ *         schema:
+ *           type: boolean
+ *         description: Alkoholos vagy alkoholmentes receptek
+ *       - in: query
+ *         name: available_only
+ *         schema:
+ *           type: boolean
+ *         description: Csak az elérhető receptek (ahol van minden alapanyag)
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Recipe'
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // GET all recipes (with filter options)
 router.get('/', (req, res) => {
   const { category, is_alcoholic, available_only } = req.query;
@@ -79,6 +115,32 @@ function filterAvailableRecipes(recipes, res) {
   });
 }
 
+/**
+ * @swagger
+ * /api/recipes/{id}:
+ *   get:
+ *     summary: Recept lekérése ID alapján
+ *     description: Egy konkrét recept részletes adatai az alapanyagokkal együtt
+ *     tags: [Recipes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: A recept ID-ja
+ *     responses:
+ *       200:
+ *         description: Sikeres lekérdezés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Recipe'
+ *       404:
+ *         description: Recept nem található
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // GET recipe by ID with full details
 router.get('/:id', (req, res) => {
   const recipeQuery = 'SELECT * FROM recipes WHERE id = ?';
@@ -122,6 +184,79 @@ router.get('/:id', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/recipes:
+ *   post:
+ *     summary: Új recept létrehozása
+ *     description: Új recept hozzáadása az alapanyagokkal együtt
+ *     tags: [Recipes]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - category
+ *               - is_alcoholic
+ *               - ingredients
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Mojito
+ *               description:
+ *                 type: string
+ *                 example: Frissítő kubai koktél
+ *               category:
+ *                 type: string
+ *                 enum: [classic, modern, shooter, mocktail, tropical, seasonal]
+ *                 example: classic
+ *               difficulty:
+ *                 type: string
+ *                 enum: [easy, medium, hard]
+ *                 example: easy
+ *               glass_type:
+ *                 type: string
+ *                 example: Highball
+ *               garnish:
+ *                 type: string
+ *                 example: Menta levél, lime szelet
+ *               instructions:
+ *                 type: string
+ *                 example: Zúzd össze a mentát cukorral...
+ *               is_alcoholic:
+ *                 type: boolean
+ *                 example: true
+ *               ingredients:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     ingredient_id:
+ *                       type: integer
+ *                     quantity:
+ *                       type: number
+ *                     unit:
+ *                       type: string
+ *                     order_number:
+ *                       type: integer
+ *     responses:
+ *       201:
+ *         description: Recept sikeresen létrehozva
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 id:
+ *                   type: integer
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // POST new recipe
 router.post('/', (req, res) => {
   const { name, description, category, difficulty, glass_type, garnish, instructions, is_alcoholic, ingredients } = req.body;
@@ -191,6 +326,66 @@ router.post('/', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/recipes/{id}:
+ *   put:
+ *     summary: Recept módosítása
+ *     description: Meglévő recept frissítése az alapanyagokkal együtt
+ *     tags: [Recipes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: A recept ID-ja
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *                 enum: [classic, modern, shooter, mocktail, tropical, seasonal]
+ *               difficulty:
+ *                 type: string
+ *                 enum: [easy, medium, hard]
+ *               glass_type:
+ *                 type: string
+ *               garnish:
+ *                 type: string
+ *               instructions:
+ *                 type: string
+ *               is_alcoholic:
+ *                 type: boolean
+ *               ingredients:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     ingredient_id:
+ *                       type: integer
+ *                     quantity:
+ *                       type: number
+ *                     unit:
+ *                       type: string
+ *                     order_number:
+ *                       type: integer
+ *     responses:
+ *       200:
+ *         description: Recept sikeresen frissítve
+ *       404:
+ *         description: Recept nem található
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // PUT update recipe
 router.put('/:id', (req, res) => {
   const { name, description, category, difficulty, glass_type, garnish, instructions, is_alcoholic, ingredients } = req.body;
@@ -278,6 +473,28 @@ router.put('/:id', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/recipes/{id}:
+ *   delete:
+ *     summary: Recept törlése
+ *     description: Recept törlése az adatbázisból
+ *     tags: [Recipes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: A törlendő recept ID-ja
+ *     responses:
+ *       200:
+ *         description: Recept sikeresen törölve
+ *       404:
+ *         description: Recept nem található
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // DELETE recipe
 router.delete('/:id', (req, res) => {
   const query = 'DELETE FROM recipes WHERE id = ?';
@@ -293,6 +510,50 @@ router.delete('/:id', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/recipes/{id}/image:
+ *   post:
+ *     summary: Recept kép feltöltése
+ *     description: Kép feltöltése egy recepthez
+ *     tags: [Recipes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: A recept ID-ja
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: A feltöltendő kép fájl (JPG, PNG, WEBP)
+ *     responses:
+ *       200:
+ *         description: Kép sikeresen feltöltve
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 image_url:
+ *                   type: string
+ *       400:
+ *         description: Hiányzó kép fájl
+ *       404:
+ *         description: Recept nem található
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // POST /api/recipes/:id/image - Upload recipe image
 router.post('/:id/image', upload.single('image'), (req, res) => {
   const recipeId = req.params.id;
@@ -344,6 +605,28 @@ router.post('/:id/image', upload.single('image'), (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/recipes/{id}/image:
+ *   delete:
+ *     summary: Recept kép törlése
+ *     description: Törli a recepthez feltöltött képet
+ *     tags: [Recipes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: A recept ID-ja
+ *     responses:
+ *       200:
+ *         description: Kép sikeresen törölve
+ *       404:
+ *         description: Recept nem található vagy nincs képe
+ *       500:
+ *         description: Adatbázis hiba
+ */
 // DELETE /api/recipes/:id/image - Delete recipe image
 router.delete('/:id/image', (req, res) => {
   const recipeId = req.params.id;
