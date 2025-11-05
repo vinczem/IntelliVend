@@ -72,7 +72,7 @@ fi
 
 # Start MySQL server
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting MySQL server..."
-mysqld --user=mysql --datadir=/data/mysql &
+mysqld --user=mysql --datadir=/data/mysql --bind-address=127.0.0.1 --port=3306 &
 MYSQL_PID=$!
 
 # Wait for MySQL to be ready
