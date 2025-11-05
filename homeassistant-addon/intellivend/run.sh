@@ -155,6 +155,11 @@ const API_CONFIG = {
 };
 EOF
 
+# Stop any existing nginx processes
+bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Stopping any existing Nginx processes..."
+pkill nginx 2>/dev/null || true
+sleep 1
+
 # Start Nginx
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting Nginx..."
 nginx
