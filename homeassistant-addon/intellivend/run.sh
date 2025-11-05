@@ -149,4 +149,10 @@ nginx
 # Start Node.js backend
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting backend server..."
 cd /app/backend
-exec node server.js
+
+# Run Node.js in foreground with output redirect
+# This ensures logs appear in Home Assistant supervisor
+node server.js 2>&1 | sed -e 's/^/[backend] /' &
+
+# Keep script running
+wait
