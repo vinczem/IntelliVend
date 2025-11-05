@@ -24,6 +24,9 @@ RUN mkdir -p logs
 WORKDIR /app
 COPY frontend/ ./frontend/
 
+# Copy database schema and seed
+COPY database/ /app/database/
+
 # Copy nginx configuration
 COPY homeassistant-addon/intellivend/nginx.conf /etc/nginx/http.d/default.conf
 
