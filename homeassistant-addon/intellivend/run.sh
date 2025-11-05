@@ -5,64 +5,45 @@ set -e
 
 bashio::log.info "Starting IntelliVend Add-on..."
 
-# Get configuration
-MYSQL_HOST=$(bashio::config 'mysql_host')
-MYSQL_PORT=$(bashio::config 'mysql_port')
-MYSQL_DB=$(bashio::config 'mysql_database')
-MYSQL_USER=$(bashio::config 'mysql_user')
-MYSQL_PASSWORD=$(bashio::config 'mysql_password')
+# Start MySQL server
+bashio::log.info "Starting MySQL server..."
+mysqld --user=mysql --datadir=/data/mysql &
+MYSQL_PID=$!
 
+# Wait for MySQL to be ready
+bashio::log.info "Waiting for MySQL to be ready..."
+for i in {30..0}; do
+    if mysqladmin ping --silent 2>/dev/null; then
+        break
+    fi
+    sleep 1
+done
+
+if [ "$i" = 0 ]; then
+    bashio::log.error "MySQL failed to start!"
+    exit 1
+fi
+
+bashio::log.info "MySQL is ready!"
+
+# Get MQTT configuration
 MQTT_BROKER=$(bashio::config 'mqtt_broker')
 MQTT_PORT=$(bashio::config 'mqtt_port')
 MQTT_USER=$(bashio::config 'mqtt_user')
 MQTT_PASSWORD=$(bashio::config 'mqtt_password')
-
 LOG_LEVEL=$(bashio::config 'log_level')
 
-# Wait for MySQL to be ready
-bashio::log.info "Waiting for MySQL..."
-timeout=30
-while ! mysqladmin ping -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --silent 2>/dev/null; do
-    timeout=$((timeout - 1))
-    if [ $timeout -le 0 ]; then
-        bashio::log.error "MySQL connection timeout!"
-        exit 1
-    fi
-    sleep 1
-done
-bashio::log.info "MySQL is ready!"
-
-# Check if database exists, if not create it
-bashio::log.info "Checking database..."
-DB_EXISTS=$(mysql -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SHOW DATABASES LIKE '$MYSQL_DB';" | grep -c "$MYSQL_DB" || true)
-
-if [ "$DB_EXISTS" -eq 0 ]; then
-    bashio::log.info "Creating database..."
-    mysql -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "CREATE DATABASE $MYSQL_DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-fi
-
-# Check if tables exist
-TABLE_COUNT=$(mysql -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DB" -e "SHOW TABLES;" | wc -l)
-
-if [ "$TABLE_COUNT" -le 1 ]; then
-    bashio::log.info "Initializing database schema..."
-    mysql -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DB" < /app/database/schema.sql
-    
-    bashio::log.info "Loading sample data..."
-    mysql -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DB" < /app/database/seed.sql
-fi
-
-# Create .env file for backend
+# Create .env file for backend with local MySQL
 bashio::log.info "Configuring backend environment..."
 cat > /app/backend/.env << EOF
 NODE_ENV=production
 PORT=3000
 
-DB_HOST=$MYSQL_HOST
-DB_PORT=$MYSQL_PORT
-DB_NAME=$MYSQL_DB
-DB_USER=$MYSQL_USER
-DB_PASSWORD=$MYSQL_PASSWORD
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=intellivend
+DB_USER=intellivend
+DB_PASSWORD=intellivend
 
 MQTT_BROKER=$MQTT_BROKER
 MQTT_PORT=$MQTT_PORT

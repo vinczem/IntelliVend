@@ -9,12 +9,10 @@
   "boot": "auto",
   "init": false,
   "ports": {
-    "8099/tcp": 8099,
-    "3000/tcp": 3000
+    "8099/tcp": 8099
   },
   "ports_description": {
-    "8099/tcp": "Web UI (Nginx)",
-    "3000/tcp": "Backend API"
+    "8099/tcp": "Web UI"
   },
   "ingress": true,
   "ingress_port": 8099,
@@ -25,13 +23,9 @@
   "homeassistant_api": true,
   "auth_api": false,
   "host_network": false,
-  "services": ["mqtt:want", "mysql:want"],
+  "map": ["config:rw", "share:rw"],
+  "services": ["mqtt:want"],
   "options": {
-    "mysql_host": "core-mariadb",
-    "mysql_port": 3306,
-    "mysql_database": "intellivend",
-    "mysql_user": "intellivend",
-    "mysql_password": "",
     "mqtt_broker": "core-mosquitto",
     "mqtt_port": 1883,
     "mqtt_user": "",
@@ -39,11 +33,6 @@
     "log_level": "info"
   },
   "schema": {
-    "mysql_host": "str",
-    "mysql_port": "port",
-    "mysql_database": "str",
-    "mysql_user": "str",
-    "mysql_password": "password",
     "mqtt_broker": "str",
     "mqtt_port": "port",
     "mqtt_user": "str?",
