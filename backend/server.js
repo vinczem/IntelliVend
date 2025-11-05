@@ -54,22 +54,11 @@ app.use((req, res, next) => {
 // Static file serving for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Swagger API Documentation
-const swaggerOptions = {
+// Swagger API Documentation - Using /api/docs to leverage existing /api/ nginx proxy
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'IntelliVend API Documentation',
-  swaggerOptions: {
-    url: '/api-docs/swagger.json'
-  }
-};
-
-app.get('/api-docs/swagger.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
-});
-
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerSpec, swaggerOptions));
+  customSiteTitle: 'IntelliVend API Documentation'
+}));
 
 // Routes
 app.use('/api/ingredients', require('./routes/ingredients'));

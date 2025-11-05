@@ -82,7 +82,7 @@ alert_email
 Az add-on elérhető:
 - **Ingress-en keresztül**: Kattints a **Webes kezelőfelület megnyitása** gombra
 - **Közvetlen elérés**: `http://homeassistant.local:8099`
-- **API Dokumentáció (Swagger)**: `http://homeassistant.local:8099/api-docs`
+- **API Dokumentáció (Swagger)**: `http://homeassistant.local:8099/api/docs`
 
 ## Első lépések
 
