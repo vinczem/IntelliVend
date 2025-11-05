@@ -39,10 +39,9 @@ if (process.env.MQTT_BROKER) {
 // Middleware
 app.use(cors()); // CORS először!
 
-// Disable CSP for Swagger docs to allow inline scripts
+// Disable helmet for Swagger docs to avoid CSP issues
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/docs')) {
-    // No helmet for Swagger docs
     next();
   } else {
     helmet({
@@ -66,45 +65,16 @@ app.use((req, res, next) => {
 // Static file serving for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve custom Swagger initialization script
-app.use('/api/docs/js', express.static(path.join(__dirname, 'public')));
+// Swagger API Documentation using swagger-ui-express
+const swaggerUi = require('swagger-ui-express');
 
-// Swagger API Documentation
-const swaggerUiAssetPath = require('swagger-ui-dist').getAbsoluteFSPath();
-app.use('/api/docs/swagger-ui-dist', express.static(swaggerUiAssetPath));
+const swaggerOptions = {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "IntelliVend API Documentation"
+};
 
-app.get('/api/docs', (req, res) => {
-  res.type('html');
-  res.send(
-    '<!DOCTYPE html>' +
-    '<html lang="en">' +
-    '<head>' +
-    '<meta charset="UTF-8">' +
-    '<title>IntelliVend API Documentation</title>' +
-    '<link rel="stylesheet" type="text/css" href="/api/docs/swagger-ui-dist/swagger-ui.css" />' +
-    '<link rel="icon" type="image/png" href="/api/docs/swagger-ui-dist/favicon-32x32.png" sizes="32x32" />' +
-    '<link rel="icon" type="image/png" href="/api/docs/swagger-ui-dist/favicon-16x16.png" sizes="16x16" />' +
-    '<style>' +
-    'html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }' +
-    '*, *:before, *:after { box-sizing: inherit; }' +
-    'body { margin:0; background: #fafafa; }' +
-    '.swagger-ui .topbar { display: none }' +
-    '</style>' +
-    '</head>' +
-    '<body>' +
-    '<div id="swagger-ui"></div>' +
-    '<script src="/api/docs/swagger-ui-dist/swagger-ui-bundle.js" charset="UTF-8"></script>' +
-    '<script src="/api/docs/swagger-ui-dist/swagger-ui-standalone-preset.js" charset="UTF-8"></script>' +
-    '<script src="/api/docs/js/swagger-init.js" charset="UTF-8"></script>' +
-    '</body>' +
-    '</html>'
-  );
-});
-
-app.get('/api/docs/swagger.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
-});
+app.use('/api/docs', swaggerUi.serve);
+app.get('/api/docs', swaggerUi.setup(swaggerSpec, swaggerOptions));
 
 // Routes
 app.use('/api/ingredients', require('./routes/ingredients'));
