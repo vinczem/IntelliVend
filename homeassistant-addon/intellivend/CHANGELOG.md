@@ -2,6 +2,13 @@
 
 All notable changes to this add-on will be documented in this file.
 
+## [1.0.2] - 2025-11-05
+
+### Fixed
+- Ingress API path detection now correctly identifies Home Assistant Ingress URLs
+- API calls now properly use `/api/hassio_ingress/TOKEN/api/` path structure
+- Fixed API endpoints returning 404 when accessed through Ingress panel
+
 ## [1.0.1] - 2025-11-05
 
 ### Fixed
