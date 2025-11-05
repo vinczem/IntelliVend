@@ -4,6 +4,8 @@
  * Handles Socket.IO connection to backend for real-time ESP32 updates
  */
 
+console.log('🚀 websocket.js loaded!');
+
 class WebSocketClient {
   constructor() {
     this.socket = null;
@@ -160,7 +162,21 @@ class WebSocketClient {
 // Global WebSocket instance
 const wsClient = new WebSocketClient();
 
-// Auto-connect when page loads
+console.log('🚀 WebSocketClient instance created');
+
+// Auto-connect when page loads OR immediately if DOM already loaded
+if (document.readyState === 'loading') {
+  console.log('⏳ DOM still loading, waiting for DOMContentLoaded...');
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('✅ DOMContentLoaded fired, connecting WebSocket...');
+    wsClient.connect();
+  });
+} else {
+  console.log('✅ DOM already loaded, connecting WebSocket immediately...');
+  wsClient.connect();
+}
+
+// Keep the old event listener for compatibility
 document.addEventListener('DOMContentLoaded', () => {
   wsClient.connect();
   
