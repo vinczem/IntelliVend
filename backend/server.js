@@ -54,8 +54,9 @@ app.use((req, res, next) => {
 // Static file serving for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Swagger API Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+// Swagger API Documentation - serve static assets first
+app.use('/api-docs', swaggerUi.serveFiles(swaggerSpec, {}));
+app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: 'IntelliVend API Documentation'
 }));
