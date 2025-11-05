@@ -40,7 +40,7 @@ Az IntelliVend egy teljes körű italautomata rendszer Home Assistant-hez, amely
 
 ### 3. Konfiguráció
 
-#### MQTT beállítása (opcionális)
+#### MQTT beállítása
 
 Ha ESP32 eszközzel szeretnél kommunikálni, MQTT broker szükséges:
 
@@ -49,7 +49,7 @@ Ha ESP32 eszközzel szeretnél kommunikálni, MQTT broker szükséges:
 
 #### IntelliVend konfiguráció
 
-A Configuration lapon állítsd be az MQTT kapcsolatot (ha szükséges):
+A Konfiguráció lapon állítsd be az MQTT kapcsolatot:
 
 ```yaml
 mqtt_broker: core-mosquitto
@@ -57,6 +57,17 @@ mqtt_port: 1883
 mqtt_user: intellivend
 mqtt_password: your_mqtt_password
 log_level: info
+```
+
+Az IntelliVend emailt küld, ha valamelyik alapanyag fogyóban van, vagy esetleg elfogyott.
+Ehhez add meg az Email fiók SMTP beállításait:
+
+```yaml
+smtp_host
+smtp_port
+smtp_user
+smtp_password
+alert_email
 ```
 
 ### 4. Indítás
@@ -68,7 +79,7 @@ log_level: info
 ### 5. Hozzáférés
 
 Az add-on elérhető:
-- **Ingress-en keresztül**: Kattints a **Open Web UI** gombra
+- **Ingress-en keresztül**: Kattints a **Webes kezelőfelület megnyitása** gombra
 - **Közvetlen elérés**: `http://homeassistant.local:8099`
 
 ## Első lépések
@@ -83,20 +94,21 @@ Az add-on elérhető:
    - Add hozzá az italautomatádban található alapanyagokat
 
 3. **Pumpák beállítása**:
-   - A Pumps (Pumpák) menüpontban rendeld hozzá az alapanyagokat a pumpákhoz
+   - A Pumpák menüpontban rendeld hozzá az alapanyagokat a pumpákhoz
    - Állítsd be a GPIO pineket
 
 4. **Készlet feltöltése**:
-   - Az Inventory (Készlet) menüpontban rögzítsd a palackok méretét és mennyiségét
+   - A Készlet menüpontban rögzítsd a palackok méretét és bennük lévő folyadék mennyiségét
 
 5. **Receptek létrehozása**:
-   - A Recipes (Receptek) menüben hozz létre koktél recepteket
+   - A Receptek menüben hozz létre koktél recepteket
    - Állítsd be az alapanyagok mennyiségét
+   - Tölts fel képet az italról (opcionális, a recept rögzítése után elérhető)
 
 6. **Adagolás**:
-   - A Dispense (Adagolás) menüpontból indítsd el az italok készítését
+   - Az Italok menüpontból indítsd el az italok készítését
 
-## Konfigurációs Opciók
+## Konfigurációs opciók
 
 ### MQTT beállítások
 
@@ -104,6 +116,13 @@ Az add-on elérhető:
 - **mqtt_port**: MQTT port (alapértelmezett: `1883`)
 - **mqtt_user**: MQTT felhasználónév (opcionális)
 - **mqtt_password**: MQTT jelszó (opcionális)
+
+### MQTT beállítások
+- **smtp_host**: Az SMTP szerver címe (pl. `smtp.google.com`)
+- **smtp_port**: és portja (pl. `587`)
+- **smtp_user**: SMTP felhasználónév
+- **smtp_password**: SMTP jelszó
+- **alert_email**: A levelek címzettje
 
 ### Egyéb beállítások
 
@@ -131,32 +150,20 @@ Az ESP32 a következő MQTT topicokat használja:
 
 ### Publikált topicok (ESP32 → Backend)
 - `intellivend/status` - ESP32 állapot
-- `intellivend/pump/flow` - Áramlásmérő adatok
 - `intellivend/dispense/complete` - Adagolás befejezve
+- `intellivend/maintenance/complete` - Öblítés befejezve
 - `intellivend/error` - Hibaüzenetek
+- `intellivend/heartbreak` - Életjel topic
 
 ### Feliratkozott topicok (Backend → ESP32)
-- `intellivend/dispense/start` - Adagolás indítása
-- `intellivend/dispense/stop` - Adagolás leállítása
-- `intellivend/pump/test` - Pumpa teszt
-- `intellivend/calibrate` - Kalibráció
+- `intellivend/dispense/command` - Adagolás indítása
+- `intellivend/maintenance/flush` - Öblítés indítása
 
 ## Támogatás
 
 - **GitHub Issues**: https://github.com/vinczem/IntelliVend/issues
 - **Dokumentáció**: https://github.com/vinczem/IntelliVend
 - **ESP32 Mock tool**: A repository tartalmaz egy mock eszközt teszteléshez
-
-## Changelog
-
-### 1.0.0 (2025-11-05)
-- Kezdeti kiadás
-- Teljes recept kezelés
-- MQTT alapú ESP32 vezérlés
-- Készlet nyilvántartás
-- Statisztikák és riasztások
-- Backup/Restore funkció
-- Beépített MySQL adatbázis automatikus inicializálással
 
 ## Licenc
 
