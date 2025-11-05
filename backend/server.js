@@ -54,11 +54,57 @@ app.use((req, res, next) => {
 // Static file serving for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Swagger API Documentation - Using /api/docs to leverage existing /api/ nginx proxy
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'IntelliVend API Documentation'
-}));
+// Swagger API Documentation
+const swaggerUiAssetPath = require('swagger-ui-dist').getAbsoluteFSPath();
+app.use('/api/docs/swagger-ui-dist', express.static(swaggerUiAssetPath));
+
+app.get('/api/docs', (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>IntelliVend API Documentation</title>
+  <link rel="stylesheet" type="text/css" href="/api/docs/swagger-ui-dist/swagger-ui.css" />
+  <link rel="icon" type="image/png" href="/api/docs/swagger-ui-dist/favicon-32x32.png" sizes="32x32" />
+  <link rel="icon" type="image/png" href="/api/docs/swagger-ui-dist/favicon-16x16.png" sizes="16x16" />
+  <style>
+    html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin:0; background: #fafafa; }
+    .swagger-ui .topbar { display: none }
+  </style>
+</head>
+<body>
+<div id="swagger-ui"></div>
+<script src="/api/docs/swagger-ui-dist/swagger-ui-bundle.js" charset="UTF-8"></script>
+<script src="/api/docs/swagger-ui-dist/swagger-ui-standalone-preset.js" charset="UTF-8"></script>
+<script>
+window.onload = function() {
+  window.ui = SwaggerUIBundle({
+    url: "/api/docs/swagger.json",
+    dom_id: '#swagger-ui',
+    deepLinking: true,
+    presets: [
+      SwaggerUIBundle.presets.apis,
+      SwaggerUIStandalonePreset
+    ],
+    plugins: [
+      SwaggerUIBundle.plugins.DownloadUrl
+    ],
+    layout: "StandaloneLayout"
+  });
+};
+</script>
+</body>
+</html>
+  `);
+});
+
+app.get('/api/docs/swagger.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
 // Routes
 app.use('/api/ingredients', require('./routes/ingredients'));
