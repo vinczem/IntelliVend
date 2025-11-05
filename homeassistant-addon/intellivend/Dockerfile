@@ -34,10 +34,19 @@ RUN cp -r /tmp/repo/database .
 # Copy nginx configuration
 RUN cp /tmp/repo/homeassistant-addon/intellivend/nginx.conf /etc/nginx/http.d/default.conf
 
-# Copy and setup run script for s6-overlay
-RUN mkdir -p /etc/services.d/intellivend && \
-    cp /tmp/repo/homeassistant-addon/intellivend/run.sh /etc/services.d/intellivend/run && \
-    chmod +x /etc/services.d/intellivend/run
+# Setup s6-overlay v3 services
+RUN mkdir -p /etc/s6-overlay/s6-rc.d/intellivend && \
+    mkdir -p /etc/s6-overlay/s6-rc.d/user/contents.d
+
+# Copy run script
+COPY run.sh /etc/s6-overlay/s6-rc.d/intellivend/run
+RUN chmod +x /etc/s6-overlay/s6-rc.d/intellivend/run
+
+# Create service type file
+RUN echo "longrun" > /etc/s6-overlay/s6-rc.d/intellivend/type
+
+# Enable the service
+RUN touch /etc/s6-overlay/s6-rc.d/user/contents.d/intellivend
 
 # Cleanup
 RUN rm -rf /tmp/repo
