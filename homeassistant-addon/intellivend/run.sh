@@ -26,7 +26,7 @@ if ! test -d "/data/mysql/mysql"; then
     mysql_install_db --user=mysql --datadir=/data/mysql > /dev/null 2>&1
     
     bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting temporary MySQL for setup..."
-    mysqld --user=mysql --datadir=/data/mysql --skip-networking &
+    mysqld --defaults-file=/etc/my.cnf --user=mysql --skip-networking &
     MYSQL_INIT_PID=$!
     
     # Wait for MySQL to start
@@ -72,7 +72,7 @@ fi
 
 # Start MySQL server
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting MySQL server..."
-mysqld --user=mysql --datadir=/data/mysql --bind-address=127.0.0.1 --port=3306 &
+mysqld --defaults-file=/etc/my.cnf --user=mysql &
 MYSQL_PID=$!
 
 # Wait for MySQL to be ready

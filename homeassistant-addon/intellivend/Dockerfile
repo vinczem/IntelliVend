@@ -37,6 +37,9 @@ RUN cp -r /tmp/repo/database .
 # Copy nginx configuration
 RUN cp /tmp/repo/homeassistant-addon/intellivend/nginx.conf /etc/nginx/http.d/default.conf
 
+# Copy MySQL configuration
+COPY my.cnf /etc/my.cnf
+
 # Setup s6-overlay v3 service
 RUN mkdir -p /etc/s6-overlay/s6-rc.d/intellivend && \
     mkdir -p /etc/s6-overlay/s6-rc.d/user/contents.d
