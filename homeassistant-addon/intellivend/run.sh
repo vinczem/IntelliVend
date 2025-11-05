@@ -100,6 +100,13 @@ MQTT_USER=$(bashio::config 'mqtt_user')
 MQTT_PASSWORD=$(bashio::config 'mqtt_password')
 LOG_LEVEL=$(bashio::config 'log_level')
 
+# Get Email configuration
+SMTP_HOST=$(bashio::config 'smtp_host')
+SMTP_PORT=$(bashio::config 'smtp_port')
+SMTP_USER=$(bashio::config 'smtp_user')
+SMTP_PASSWORD=$(bashio::config 'smtp_password')
+ALERT_EMAIL=$(bashio::config 'alert_email')
+
 # Create .env file for backend with local MySQL
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Configuring backend environment..."
 cat > /app/backend/.env << EOF
@@ -116,6 +123,12 @@ MQTT_BROKER=$MQTT_BROKER
 MQTT_PORT=$MQTT_PORT
 MQTT_USERNAME=$MQTT_USER
 MQTT_PASSWORD=$MQTT_PASSWORD
+
+SMTP_HOST=$SMTP_HOST
+SMTP_PORT=$SMTP_PORT
+SMTP_USER=$SMTP_USER
+SMTP_PASSWORD=$SMTP_PASSWORD
+ALERT_EMAIL=$ALERT_EMAIL
 
 LOG_LEVEL=$LOG_LEVEL
 

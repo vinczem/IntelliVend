@@ -30,13 +30,23 @@
     "mqtt_port": 1883,
     "mqtt_user": "",
     "mqtt_password": "",
-    "log_level": "info"
+    "log_level": "info",
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "smtp_user": "",
+    "smtp_password": "",
+    "alert_email": ""
   },
   "schema": {
     "mqtt_broker": "str",
     "mqtt_port": "port",
     "mqtt_user": "str?",
     "mqtt_password": "password?",
-    "log_level": "list(debug|info|warning|error)"
+    "log_level": "list(debug|info|warning|error)",
+    "smtp_host": "str?",
+    "smtp_port": "port?",
+    "smtp_user": "email?",
+    "smtp_password": "password?",
+    "alert_email": "email?"
   }
 }
