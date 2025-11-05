@@ -16,8 +16,11 @@ RUN apk add --no-cache \
 # Set working directory
 WORKDIR /tmp
 
-# Clone repository
-RUN git clone --depth 1 https://github.com/vinczem/IntelliVend.git repo
+# Clone repository with cache busting
+# Add build arg to force fresh clone on each build
+ARG BUILD_DATE
+RUN echo "Build date: ${BUILD_DATE}" && \
+    git clone --depth 1 https://github.com/vinczem/IntelliVend.git repo
 
 # Setup application directory
 WORKDIR /app

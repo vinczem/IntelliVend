@@ -11,3 +11,4 @@ labels:
   org.opencontainers.image.licenses: "MIT"
 args:
   NODEJS_VERSION: "20.11.1-r0"
+  BUILD_DATE: "{{ .Date }}"
