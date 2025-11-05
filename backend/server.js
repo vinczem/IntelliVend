@@ -38,21 +38,36 @@ if (process.env.MQTT_BROKER) {
 
 // Middleware
 app.use(cors()); // CORS először!
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+
+// Disable CSP for Swagger docs to allow inline scripts
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/docs')) {
+    // No helmet for Swagger docs
+    next();
+  } else {
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" }
+    })(req, res, next);
+  }
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined', { stream: logger.stream }));
 
 // Ensure all JSON responses use utf-8 charset
 app.use((req, res, next) => {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  if (!req.path.startsWith('/api/docs')) {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  }
   next();
 });
 
 // Static file serving for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Serve custom Swagger initialization script
+app.use('/api/docs/js', express.static(path.join(__dirname, 'public')));
 
 // Swagger API Documentation
 const swaggerUiAssetPath = require('swagger-ui-dist').getAbsoluteFSPath();
@@ -80,18 +95,7 @@ app.get('/api/docs', (req, res) => {
     '<div id="swagger-ui"></div>' +
     '<script src="/api/docs/swagger-ui-dist/swagger-ui-bundle.js" charset="UTF-8"></script>' +
     '<script src="/api/docs/swagger-ui-dist/swagger-ui-standalone-preset.js" charset="UTF-8"></script>' +
-    '<script>' +
-    'window.onload = function() {' +
-    '  window.ui = SwaggerUIBundle({' +
-    '    url: "/api/docs/swagger.json",' +
-    '    dom_id: "#swagger-ui",' +
-    '    deepLinking: true,' +
-    '    presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],' +
-    '    plugins: [SwaggerUIBundle.plugins.DownloadUrl],' +
-    '    layout: "StandaloneLayout"' +
-    '  });' +
-    '};' +
-    '</script>' +
+    '<script src="/api/docs/js/swagger-init.js" charset="UTF-8"></script>' +
     '</body>' +
     '</html>'
   );
