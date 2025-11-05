@@ -2,6 +2,16 @@
 
 All notable changes to this add-on will be documented in this file.
 
+## [1.0.3] - 2025-11-05
+
+### Fixed
+- WebSocket (Socket.IO) connection now works properly through Ingress
+- Changed WebSocket URL detection to use current location origin
+- Updated Nginx configuration to proxy `/socket.io/` endpoint (was `/ws`)
+- Added proper Socket.IO path configuration for Ingress compatibility
+- Increased WebSocket proxy timeout to 24 hours for long-lived connections
+- Real-time status indicator now connects and shows "Connected" status
+
 ## [1.0.2] - 2025-11-05
 
 ### Fixed
