@@ -1,8 +1,5 @@
 #!/usr/bin/with-contenv bashio
 
-# Enable error handling
-set -e
-
 bashio::log.info "================================"
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting IntelliVend Add-on..."
 bashio::log.info "================================"

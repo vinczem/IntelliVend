@@ -1,5 +1,4 @@
 #!/usr/bin/with-contenv bashio
-set -e
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting MySQL initialization check..." >&2
 bashio::log.info "[$(date '+%Y-%m-%d %H:%M:%S')] Starting MySQL initialization check..."
