@@ -66,7 +66,6 @@ app.use((req, res, next) => {
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Swagger API Documentation using swagger-ui-express
-const swaggerUi = require('swagger-ui-express');
 
 const swaggerOptions = {
   customCss: '.swagger-ui .topbar { display: none }',
