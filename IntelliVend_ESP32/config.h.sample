@@ -44,6 +44,7 @@
 // Flow Meter GPIO Pins - YF-S201
 // Hall effect water flow sensors
 // Pulse output: ~450 pulses per liter
+// NOTE: ESP32-S3 does NOT have GPIO 22-32 (reserved for SPI Flash)
 // ============================================
 #define FLOW_METER_1_PIN 14
 #define FLOW_METER_2_PIN 12
@@ -51,8 +52,8 @@
 #define FLOW_METER_4_PIN 15
 #define FLOW_METER_5_PIN 16
 #define FLOW_METER_6_PIN 17
-#define FLOW_METER_7_PIN 25
-#define FLOW_METER_8_PIN 26
+#define FLOW_METER_7_PIN 33  // Changed from 25 (GPIO 25 doesn't exist on ESP32-S3)
+#define FLOW_METER_8_PIN 34  // Changed from 26 (GPIO 26 doesn't exist on ESP32-S3)
 
 // YF-S201 calibration constant (pulses per liter)
 // Manufacturer spec: ~450 pulses/L

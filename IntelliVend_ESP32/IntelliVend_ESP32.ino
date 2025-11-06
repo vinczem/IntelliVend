@@ -127,8 +127,8 @@ void setup() {
   Serial.println("=================================\n");
 
   // Initialize status LED
-  pinMode(STATUS_LED_PIN, OUTPUT);
-  setStatusLED(255, 255, 0);  // Yellow = Initializing
+  // pinMode(STATUS_LED_PIN, OUTPUT);
+  // setStatusLED(255, 255, 0);  // Yellow = Initializing
   
   // Initialize pump relay pins (active HIGH for relay trigger)
   Serial.println("[INIT] Configuring pump relay pins...");
@@ -170,6 +170,10 @@ void loop() {
     publishHeartbeat();
     lastHeartbeat = millis();
   }
+  
+  // Small delay to prevent watchdog reset
+  delay(10);
+  yield();
 }
 
 // ============================================
@@ -188,6 +192,7 @@ void setupWiFi() {
     delay(500);
     Serial.print(".");
     attempts++;
+    yield();  // Feed watchdog
   }
   
   if (WiFi.status() == WL_CONNECTED) {
@@ -196,7 +201,8 @@ void setupWiFi() {
     Serial.printf("[WiFi] Signal: %d dBm\n", WiFi.RSSI());
   } else {
     Serial.println("\n[ERROR] WiFi connection failed!");
-    setStatusLED(255, 0, 0);  // Red = Error
+    Serial.println("[WARN] Running in offline mode");
+    setStatusLED(255, 128, 0);  // Orange = Offline
   }
 }
 
@@ -214,6 +220,7 @@ void setupMQTT() {
 
 void reconnectMQTT() {
   if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[MQTT] WiFi not connected, skipping MQTT reconnect");
     return;
   }
 
@@ -243,10 +250,14 @@ void reconnectMQTT() {
     
     // Publish online status
     publishHeartbeat();
+    setStatusLED(0, 255, 0);  // Green = Connected
   } else {
     Serial.printf("Failed! RC=%d\n", mqtt.state());
-    setStatusLED(255, 0, 0);  // Red = Error
+    Serial.println("[WARN] Will retry MQTT connection later");
+    setStatusLED(255, 128, 0);  // Orange = Disconnected
   }
+  
+  yield();  // Feed watchdog
 }
 
 // ============================================

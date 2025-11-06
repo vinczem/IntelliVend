@@ -54,8 +54,9 @@ Pump 1-8 → GPIO: 2, 4, 5, 18, 19, 21, 22, 23
 
 ### YF-S201 Flow Sensorok
 ```
-Sensor 1-8 → GPIO: 14, 12, 13, 15, 16, 17, 25, 26
+Sensor 1-8 → GPIO: 14, 12, 13, 15, 16, 17, 33, 34
 ```
+**FIGYELEM:** ESP32-S3 nem rendelkezik GPIO 22-32 pinekkel (SPI Flash-nek fenntartva)!
 
 ### Egyéb
 ```

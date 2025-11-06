@@ -92,11 +92,11 @@ A `config.h` fájlban ellenőrizd a pumpa relay és flow meter pineket:
 #define FLOW_METER_4_PIN 15
 #define FLOW_METER_5_PIN 16
 #define FLOW_METER_6_PIN 17
-#define FLOW_METER_7_PIN 25
-#define FLOW_METER_8_PIN 26
+#define FLOW_METER_7_PIN 33  // GPIO 25 nem létezik ESP32-S3-on!
+#define FLOW_METER_8_PIN 34  // GPIO 26 nem létezik ESP32-S3-on!
 ```
 
-**FONTOS:** Ezek a pinek az ESP32-S3-DEV-N16R8 számára vannak optimalizálva. Ha más ESP32 boardot használsz, lehet hogy módosítani kell.
+**FONTOS:** ESP32-S3 **NEM rendelkezik GPIO 22-32** pinekkel (SPI Flash-nek fenntartva)! A fenti konfiguráció ESP32-S3-DEV-N16R8 boardra van optimalizálva.
 
 ## Fordítás és feltöltés
 
@@ -169,9 +169,10 @@ Sensor 3   →  GPIO 13
 Sensor 4   →  GPIO 15
 Sensor 5   →  GPIO 16
 Sensor 6   →  GPIO 17
-Sensor 7   →  GPIO 25
-Sensor 8   →  GPIO 26
+Sensor 7   →  GPIO 33 ⚠️
+Sensor 8   →  GPIO 34 ⚠️
 ```
+**⚠️ FIGYELEM:** GPIO 22-32 **NEM ELÉRHETŐ** ESP32-S3-on (SPI Flash)!
 
 ### Pumpa bekötés
 
