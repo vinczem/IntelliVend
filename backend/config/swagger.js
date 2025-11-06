@@ -18,7 +18,7 @@ const options = {
     },
     servers: [
       {
-        url: '/api',
+        url: '/',
         description: 'Current server (works in both standalone and Home Assistant addon)'
       }
     ],

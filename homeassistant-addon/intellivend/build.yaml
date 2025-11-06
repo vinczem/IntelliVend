@@ -12,6 +12,6 @@ labels:
 args:
   NODEJS_VERSION: "20.11.1-r0"
   BUILD_DATE: "{{ .Date }}"
-  VERSION: "1.0.32"
+  VERSION: "1.0.33"
   CACHEBUST: "2024-11-05-13:15"
   CACHEBUST: "{{ .Timestamp }}"
