@@ -61,14 +61,14 @@ volatile unsigned long lastFlowPulse[NUM_PUMPS] = {0, 0, 0, 0, 0, 0, 0, 0};
 float totalDispensedML[NUM_PUMPS] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 // Interrupt handlers for each flow meter
-void IRAM_ATTR flowMeter1ISR() { flowPulseCount[0]++; lastFlowPulse[0] = millis(); }
-void IRAM_ATTR flowMeter2ISR() { flowPulseCount[1]++; lastFlowPulse[1] = millis(); }
-void IRAM_ATTR flowMeter3ISR() { flowPulseCount[2]++; lastFlowPulse[2] = millis(); }
-void IRAM_ATTR flowMeter4ISR() { flowPulseCount[3]++; lastFlowPulse[3] = millis(); }
-void IRAM_ATTR flowMeter5ISR() { flowPulseCount[4]++; lastFlowPulse[4] = millis(); }
-void IRAM_ATTR flowMeter6ISR() { flowPulseCount[5]++; lastFlowPulse[5] = millis(); }
-void IRAM_ATTR flowMeter7ISR() { flowPulseCount[6]++; lastFlowPulse[6] = millis(); }
-void IRAM_ATTR flowMeter8ISR() { flowPulseCount[7]++; lastFlowPulse[7] = millis(); }
+void IRAM_ATTR flowMeter1ISR() { flowPulseCount[0] = flowPulseCount[0] + 1; lastFlowPulse[0] = millis(); }
+void IRAM_ATTR flowMeter2ISR() { flowPulseCount[1] = flowPulseCount[1] + 1; lastFlowPulse[1] = millis(); }
+void IRAM_ATTR flowMeter3ISR() { flowPulseCount[2] = flowPulseCount[2] + 1; lastFlowPulse[2] = millis(); }
+void IRAM_ATTR flowMeter4ISR() { flowPulseCount[3] = flowPulseCount[3] + 1; lastFlowPulse[3] = millis(); }
+void IRAM_ATTR flowMeter5ISR() { flowPulseCount[4] = flowPulseCount[4] + 1; lastFlowPulse[4] = millis(); }
+void IRAM_ATTR flowMeter6ISR() { flowPulseCount[5] = flowPulseCount[5] + 1; lastFlowPulse[5] = millis(); }
+void IRAM_ATTR flowMeter7ISR() { flowPulseCount[6] = flowPulseCount[6] + 1; lastFlowPulse[6] = millis(); }
+void IRAM_ATTR flowMeter8ISR() { flowPulseCount[7] = flowPulseCount[7] + 1; lastFlowPulse[7] = millis(); }
 
 // Array of ISR function pointers
 void (*flowMeterISRs[NUM_PUMPS])() = {
@@ -274,7 +274,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.printf("\n[MQTT] ← %s (%d bytes)\n", topic, length);
   
   // Parse JSON payload
-  DynamicJsonDocument doc(2048);
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, payload, length);
   
   if (error) {
@@ -575,7 +575,7 @@ void resetFlowMeter(int pumpIndex) {
 // ============================================
 
 void publishHeartbeat() {
-  DynamicJsonDocument doc(512);
+  JsonDocument doc;
   
   doc["device_id"] = DEVICE_ID;
   doc["firmware_version"] = FIRMWARE_VERSION;
@@ -597,7 +597,7 @@ void publishHeartbeat() {
 }
 
 void publishDispenseComplete(int pumpNumber, float actualML, float requestedML, unsigned long durationMS) {
-  DynamicJsonDocument doc(256);
+  JsonDocument doc;
   
   doc["pump_id"] = pumpNumber;
   doc["actual_ml"] = actualML;
@@ -614,7 +614,7 @@ void publishDispenseComplete(int pumpNumber, float actualML, float requestedML, 
 }
 
 void publishMaintenanceComplete(int pumpNumber, String actionType, unsigned long durationMS) {
-  DynamicJsonDocument doc(256);
+  JsonDocument doc;
   
   doc["pump_id"] = pumpNumber;
   doc["action_type"] = actionType;
@@ -631,7 +631,7 @@ void publishMaintenanceComplete(int pumpNumber, String actionType, unsigned long
 }
 
 void publishError(int pumpNumber, String errorCode, String message, String severity) {
-  DynamicJsonDocument doc(256);
+  JsonDocument doc;
   
   doc["pump_id"] = pumpNumber;
   doc["error_code"] = errorCode;

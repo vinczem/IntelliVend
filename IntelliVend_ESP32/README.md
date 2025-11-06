@@ -23,20 +23,6 @@ ESP32-S3 alapú firmware peristaltikus pumpás italautomatához YF-S201 áramlá
 
 **Részletes Arduino IDE útmutató:** [README_ARDUINO.md](README_ARDUINO.md)
 
-### PlatformIO használat
-
-```bash
-# Konfiguráció
-cp config.h.sample config.h
-# Szerkeszd a config.h fájlt
-
-# Fordítás és feltöltés
-pio run -t upload
-
-# Serial monitor
-pio device monitor
-```
-
 ## Hardware
 
 - **MCU:** ESP32-S3-DEV-N16R8 (16MB Flash, 8MB PSRAM)

@@ -46,23 +46,21 @@ IntelliVend/
 │   ├── config/          # Konfigurációs fájlok (database, MQTT, logger)
 │   ├── routes/          # API végpontok
 │   └── services/        # Szolgáltatások (email, Home Assistant)
-├── frontend/            # Web UI
 │   ├── css/            # Stíluslapok
 │   └── js/             # JavaScript modulok
 ├── database/            # SQL sémák és seed adatok
-├── IntelliVend_ESP32/  # ESP32 firmware (Arduino IDE kompatibilis)
+├── IntelliVend_ESP32/  # ESP32 firmware (Arduino IDE)
 │   ├── IntelliVend_ESP32.ino  # Fő firmware fájl
 │   ├── config.h.sample        # Konfiguráció minta
 │   ├── README.md              # ESP32 projekt áttekintő
-│   ├── README_ARDUINO.md      # Arduino IDE részletes útmutató
-│   ├── platformio.ini         # PlatformIO konfiguráció
-│   └── src/                   # PlatformIO forrás (opcionális)
+│   └── README_ARDUINO.md      # Arduino IDE részletes útmutató
 ├── homeassistant-addon/ # Home Assistant integráció
 │   └── intellivend/    # Add-on fájlok
 ├── docker/             # Docker konfigurációk
 │   ├── docker-compose.yml
 │   ├── Dockerfile.backend
 │   └── Dockerfile.frontend
+```
 └── tools/              # Fejlesztői eszközök (ESP32 mock, stb.)
 ```
 
@@ -89,7 +87,7 @@ docker-compose up -d
 - Node.js 18+ és npm
 - MySQL 8.0+ vagy MariaDB 10.6+
 - MQTT Broker (pl. Mosquitto)
-- ESP32-S3 fejlesztői környezet (Arduino IDE vagy PlatformIO)
+- ESP32-S3 fejlesztői környezet (Arduino IDE)
 
 #### Backend
 
@@ -125,14 +123,7 @@ Használj egy webszervert (pl. Nginx) a frontend könyvtár kiszolgálásához, 
 # 6. Kattints az Upload gombra
 ```
 
-**Vagy PlatformIO-val:**
-
-```bash
-cd IntelliVend_ESP32
-cp config.h.sample config.h
-# Szerkeszd a config.h fájlt
-pio run -t upload
-```
+**Részletes útmutató:** [IntelliVend_ESP32/README_ARDUINO.md](IntelliVend_ESP32/README_ARDUINO.md)
 
 ## Konfiguráció
 
