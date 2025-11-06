@@ -1543,9 +1543,19 @@ const UI = {
         const ctx = document.getElementById('dailyConsumptionChart');
         if (!ctx) return;
 
+        console.log('Daily stats data:', dailyData); // Debug log
+
         // Destroy previous chart if exists
         if (this.dailyChart) {
             this.dailyChart.destroy();
+        }
+
+        // Check if we have data
+        if (!dailyData || dailyData.length === 0) {
+            console.warn('No daily consumption data available');
+            // Show "No data" message
+            ctx.parentElement.innerHTML = '<div class="no-data-message">Nincs elérhető adat ebben az időszakban</div><canvas id="dailyConsumptionChart"></canvas>';
+            return;
         }
 
         // Reverse data to show oldest to newest (left to right)
@@ -1553,13 +1563,21 @@ const UI = {
 
         // Prepare data
         const labels = reversedData.map(d => {
-            // Format date properly - date comes as string 'YYYY-MM-DD'
-            const dateStr = typeof d.date === 'string' ? d.date : d.date.split('T')[0];
+            // Format date properly - date comes as string 'YYYY-MM-DD' from backend
+            // Handle both string format and potential datetime format
+            let dateStr = d.date;
+            if (typeof dateStr !== 'string') {
+                dateStr = String(dateStr);
+            }
+            // Remove time part if exists (e.g., '2025-11-06T00:00:00.000Z' -> '2025-11-06')
+            if (dateStr.includes('T')) {
+                dateStr = dateStr.split('T')[0];
+            }
             const [year, month, day] = dateStr.split('-');
             // Create short format: MM.DD.
             return `${month}.${day}.`;
         });
-        const data = reversedData.map(d => d.drinks_count);
+        const data = reversedData.map(d => d.drinks_count || 0);
 
         this.dailyChart = new Chart(ctx, {
             type: 'line',
@@ -1591,7 +1609,14 @@ const UI = {
                             title: function(context) {
                                 // Show full date in tooltip
                                 const dataPoint = reversedData[context[0].dataIndex];
-                                const dateStr = typeof dataPoint.date === 'string' ? dataPoint.date : dataPoint.date.split('T')[0];
+                                let dateStr = dataPoint.date;
+                                if (typeof dateStr !== 'string') {
+                                    dateStr = String(dateStr);
+                                }
+                                // Remove time part if exists
+                                if (dateStr.includes('T')) {
+                                    dateStr = dateStr.split('T')[0];
+                                }
                                 const [year, month, day] = dateStr.split('-');
                                 return `${year}. ${month}. ${day}.`;
                             },
