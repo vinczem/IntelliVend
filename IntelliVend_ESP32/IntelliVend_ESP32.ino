@@ -104,7 +104,7 @@ void flushPump(int pumpNumber, int durationMS);
 float getFlowML(int pumpIndex);
 void resetFlowMeter(int pumpIndex);
 void publishStatus(String topic, JsonDocument& doc);
-void publishDispenseComplete(int pumpNumber, float actualML, float requestedML, unsigned long durationMS);
+void publishDispenseComplete(int pumpNumber, String recipeName, float actualML, float requestedML, unsigned long durationMS);
 void publishMaintenanceComplete(int pumpNumber, String actionType, unsigned long durationMS);
 void publishError(int pumpNumber, String errorCode, String message, String severity = "error");
 void setStatusLED(int r, int g, int b);
@@ -518,7 +518,7 @@ void runPump(int pumpNumber, float volumeML, String ingredient) {
   Serial.printf("[PUMP %d] Complete: %.1f ml in %lu ms\n", pumpNumber, actualML, duration);
   
   // Publish completion to backend
-  publishDispenseComplete(pumpNumber, actualML, volumeML, duration);
+  publishDispenseComplete(pumpNumber, currentRecipeName, actualML, volumeML, duration);
 }
 
 // ============================================
@@ -588,14 +588,12 @@ void resetFlowMeter(int pumpIndex) {
 void publishHeartbeat() {
   JsonDocument doc;
   
-  doc["device_id"] = DEVICE_ID;
-  doc["firmware_version"] = FIRMWARE_VERSION;
   doc["uptime_ms"] = millis();
   doc["wifi_rssi"] = WiFi.RSSI();
   doc["free_heap"] = ESP.getFreeHeap();
   doc["total_heap"] = ESP.getHeapSize();
   doc["pumps_active"] = 0;  // TODO: Track active pumps
-  doc["timestamp"] = millis();
+  doc["firmware_version"] = FIRMWARE_VERSION;
   
   char buffer[512];
   serializeJson(doc, buffer);
@@ -607,21 +605,21 @@ void publishHeartbeat() {
   }
 }
 
-void publishDispenseComplete(int pumpNumber, float actualML, float requestedML, unsigned long durationMS) {
+void publishDispenseComplete(int pumpNumber, String recipeName, float actualML, float requestedML, unsigned long durationMS) {
   JsonDocument doc;
   
   doc["pump_id"] = pumpNumber;
-  doc["actual_ml"] = actualML;
+  doc["recipe_name"] = recipeName;
   doc["requested_ml"] = requestedML;
+  doc["actual_ml"] = actualML;
   doc["duration_ms"] = durationMS;
-  doc["timestamp"] = millis();
   
   char buffer[256];
   serializeJson(doc, buffer);
   
   mqtt.publish("intellivend/dispense/complete", buffer);
   
-  Serial.printf("[MQTT] → intellivend/dispense/complete (Pump %d)\n", pumpNumber);
+  Serial.printf("[MQTT] → intellivend/dispense/complete (Pump %d, %s)\n", pumpNumber, recipeName.c_str());
 }
 
 void publishMaintenanceComplete(int pumpNumber, String actionType, unsigned long durationMS) {
@@ -630,7 +628,6 @@ void publishMaintenanceComplete(int pumpNumber, String actionType, unsigned long
   doc["pump_id"] = pumpNumber;
   doc["action_type"] = actionType;
   doc["duration_ms"] = durationMS;
-  doc["timestamp"] = millis();
   
   char buffer[256];
   serializeJson(doc, buffer);
@@ -646,9 +643,8 @@ void publishError(int pumpNumber, String errorCode, String message, String sever
   
   doc["pump_id"] = pumpNumber;
   doc["error_code"] = errorCode;
-  doc["message"] = message;
   doc["severity"] = severity;
-  doc["timestamp"] = millis();
+  doc["message"] = message;
   
   char buffer[256];
   serializeJson(doc, buffer);

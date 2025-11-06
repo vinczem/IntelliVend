@@ -5,8 +5,8 @@
 #
 
 # MQTT hitelesítési adatok
-MQTT_USER="user"
-MQTT_PASS="passwd"
+MQTT_USER="username"
+MQTT_PASS="password"
 
 # Python executable
 PYTHON="/Users/vmihaly/dev/IntelliVend/.venv/bin/python"
