@@ -190,14 +190,14 @@ Az add-on automatikusan létrehoz Home Assistant entitásokat MQTT Discovery-n k
 
 ### Szenzorok
 
-**ESP32 Státusz:**
+**ESP32 státusz:**
 - `sensor.esp32_wifi_signal` - WiFi jelerősség (dBm)
 - `sensor.esp32_memory_usage` - Memória használat (%)
 - `sensor.esp32_uptime` - ESP32 üzemidő
 - `sensor.esp32_active_pumps` - Aktív pumpák száma
 - `binary_sensor.esp32_online` - ESP32 kapcsolat állapot
 
-**Pumpa/Alapanyag Szenzorok (1-8):**
+**Pumpa/Alapanyag szenzorok (1-8):**
 - `sensor.pump_X_level` - Aktuális mennyiség (ml)
   - Attributes: ingredient_name, current_ml, max_ml, percentage, is_alcoholic
 - `binary_sensor.pump_X_low_stock` - Alacsony készlet riasztás
@@ -242,7 +242,7 @@ automation:
           message: "Utolsó ital: {{ states('sensor.last_dispensed_drink') }}"
 ```
 
-### Dashboard Kártya Példa
+### Dashboard kártya példa
 
 ```yaml
 type: entities
@@ -259,7 +259,7 @@ entities:
   - entity: sensor.last_dispensed_drink
     name: Utolsó ital
   - entity: binary_sensor.system_low_stock_alert
-    name: Készlet Riasztás
+    name: Készlet riasztás
 ```
 
 ## Támogatás
@@ -268,9 +268,8 @@ entities:
 - **Dokumentáció**: https://github.com/vinczem/IntelliVend
 - **ESP32 Mock tool**: A repository tartalmaz egy mock eszközt teszteléshez
 
-## Licenc
-
-MIT License - részletek a LICENSE fájlban
+## API dokumentáció
+- **Swagger**: homeassistant.local:8099/api/docs
 
 ## Köszönetnyilvánítás
 

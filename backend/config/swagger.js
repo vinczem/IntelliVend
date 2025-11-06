@@ -23,7 +23,7 @@ const options = {
       }
     ],
     tags: [
-      { name: 'Health', description: 'Health check and system status' },
+      { name: 'Health', description: 'Rendszer állapota' },
       { name: 'Ingredients', description: 'Alapanyag kezelés' },
       { name: 'Pumps', description: 'Pumpa kezelés és kalibráció' },
       { name: 'Recipes', description: 'Recept kezelés' },

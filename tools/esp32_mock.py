@@ -35,7 +35,7 @@ from typing import Dict, Optional
 class ESP32Mock:
     """ESP32 MQTT kliens szimulátor"""
     
-    def __init__(self, broker: str = "192.168.0.55", port: int = 1883, username: str = None, password: str = None, error_rate: float = 0.0):
+    def __init__(self, broker: str = "homeassistant.local", port: int = 1883, username: str = None, password: str = None, error_rate: float = 0.0):
         """
         Args:
             broker: MQTT broker IP címe
