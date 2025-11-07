@@ -147,7 +147,7 @@ router.post('/', async (req, res) => {
     // Get recipe with ingredients
     const recipeQuery = `
       SELECT r.*, ri.ingredient_id, ri.quantity, ri.unit, ri.order_number,
-             i.name as ingredient_name, i.alcohol_percentage, p.id as pump_id, p.pump_number, p.gpio_pin,
+             i.name as ingredient_name, i.alcohol_percentage, p.id as pump_id, p.pump_number,
              inv.current_quantity
       FROM recipes r
       JOIN recipe_ingredients ri ON r.id = ri.recipe_id
@@ -256,9 +256,9 @@ router.post('/', async (req, res) => {
       logger.info(`Dispensing started: ${recipe.name} (Log ID: ${logId}, Strength: ${strength})`);
       
       // Prepare ESP32 commands (use adjusted quantities)
+      // Only send pump_number - ESP32 determines GPIO pins from its config
       const dispenseCommands = adjustedIngredients.map(ing => ({
         pump_number: ing.pump_number,
-        gpio_pin: ing.gpio_pin,
         quantity_ml: convertToMl(ing.quantity, ing.unit),
         ingredient: ing.ingredient_name,
         order: ing.order_number

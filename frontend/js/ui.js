@@ -732,7 +732,6 @@ const UI = {
                             <th>Pumpa #</th>
                             <th>Alapanyag</th>
                             <th>Készlet</th>
-                            <th>GPIO Pin</th>
                             <th>Kalibráció</th>
                             <th>Állapot</th>
                             <th>Műveletek</th>
@@ -752,7 +751,6 @@ const UI = {
                                         ? `${parseFloat(pump.current_quantity)} / ${parseFloat(pump.bottle_size)} ml` 
                                         : '-'}
                                 </td>
-                                <td>GPIO ${pump.gpio_pin}</td>
                                 <td>${parseFloat(pump.calibration_factor)}x</td>
                                 <td>
                                     <span class="status-badge ${pump.is_active ? 'active' : 'inactive'}">
@@ -841,25 +839,13 @@ const UI = {
                         
                         <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
                         
-                        <h4 style="margin-bottom: 15px; color: var(--text-primary);">Hardware beállítások</h4>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Pumpa GPIO Pin *</label>
-                                <input type="number" name="gpio_pin" min="0" max="40" 
-                                    value="${pump.gpio_pin}" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Átfolyásmérő GPIO Pin</label>
-                                <input type="number" name="flow_meter_pin" min="0" max="40" 
-                                    value="${pump.flow_meter_pin || ''}">
-                            </div>
-                        </div>
-                        
                         <div class="form-group">
                             <label>Jegyzetek</label>
-                            <textarea name="notes" rows="2">${pump.notes || ''}</textarea>
+                            <textarea name="notes" rows="2" 
+                                placeholder="Pl: Bal oldali felső pumpa, 6mm cső">${pump.notes || ''}</textarea>
+                            <small style="color: var(--text-secondary); display: block; margin-top: 5px;">
+                                💡 GPIO pin kiosztás az ESP32 firmware-ben van definiálva (IntelliVend_ESP32/config.h)
+                            </small>
                         </div>
                         
                         <div class="form-actions">
@@ -894,8 +880,6 @@ const UI = {
                 ingredient_id: parseInt(formData.get('ingredient_id')),
                 bottle_size: parseFloat(formData.get('bottle_size')),
                 initial_quantity: parseFloat(formData.get('initial_quantity')),
-                gpio_pin: parseInt(formData.get('gpio_pin')),
-                flow_meter_pin: formData.get('flow_meter_pin') ? parseInt(formData.get('flow_meter_pin')) : null,
                 notes: formData.get('notes')
             };
 

@@ -19,10 +19,10 @@ CREATE TABLE IF NOT EXISTS ingredients (
 -- Pumpák táblája
 CREATE TABLE IF NOT EXISTS pumps (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    pump_number INT NOT NULL UNIQUE,
+    pump_number INT NOT NULL UNIQUE COMMENT 'Pumpa sorszáma (1-8) - ESP32 config alapján határozza meg a GPIO-t',
     ingredient_id INT NULL,
-    gpio_pin INT NOT NULL,
-    flow_meter_pin INT NULL,
+    gpio_pin INT NULL COMMENT 'DEPRECATED: GPIO managed by ESP32 config',
+    flow_meter_pin INT NULL COMMENT 'DEPRECATED: Flow meter pins managed by ESP32 config',
     is_active BOOLEAN DEFAULT TRUE,
     calibration_factor DECIMAL(10,4) DEFAULT 1.0000,
     notes TEXT,

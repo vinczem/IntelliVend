@@ -129,14 +129,6 @@ router.get('/:id', (req, res) => {
  *                 type: integer
  *                 example: 1000
  *                 description: Kezdeti mennyiség ml-ben
- *               gpio_pin:
- *                 type: integer
- *                 example: 16
- *                 description: GPIO pin szám az ESP32-n
- *               flow_meter_pin:
- *                 type: integer
- *                 example: 17
- *                 description: Áramlásmérő pin szám
  *               notes:
  *                 type: string
  *                 example: Bal oldali pumpa
@@ -156,7 +148,7 @@ router.get('/:id', (req, res) => {
  */
 // PUT assign ingredient to pump
 router.put('/:id/assign', (req, res) => {
-  const { ingredient_id, bottle_size, initial_quantity, gpio_pin, flow_meter_pin, notes } = req.body;
+  const { ingredient_id, bottle_size, initial_quantity, notes } = req.body;
 
   db.getConnection((connErr, conn) => {
     if (connErr) {
@@ -169,17 +161,15 @@ router.put('/:id/assign', (req, res) => {
         return res.status(500).json({ error: 'Transaction error', details: txErr.message });
       }
 
-      // Update pump with all fields
+      // Update pump (GPIO pins managed by ESP32, not backend)
       const updatePumpQuery = `
         UPDATE pumps 
         SET ingredient_id = ?, 
-            gpio_pin = ?, 
-            flow_meter_pin = ?, 
             notes = ? 
         WHERE id = ?
       `;
       
-      conn.query(updatePumpQuery, [ingredient_id, gpio_pin, flow_meter_pin, notes, req.params.id], (err) => {
+      conn.query(updatePumpQuery, [ingredient_id, notes, req.params.id], (err) => {
         if (err) {
           return conn.rollback(() => {
             conn.release();

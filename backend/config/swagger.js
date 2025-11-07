@@ -55,10 +55,8 @@ const options = {
           type: 'object',
           properties: {
             id: { type: 'integer', example: 1 },
-            pump_number: { type: 'integer', example: 1 },
+            pump_number: { type: 'integer', example: 1, description: 'Pumpa sorszáma (ESP32 config alapján határozza meg a GPIO-t)' },
             ingredient_id: { type: 'integer', nullable: true, example: 5 },
-            gpio_pin: { type: 'integer', example: 16 },
-            flow_meter_pin: { type: 'integer', nullable: true, example: 17 },
             is_active: { type: 'boolean', example: true },
             calibration_factor: { type: 'number', format: 'float', example: 1.0 },
             notes: { type: 'string', example: 'Baloldali alsó pumpa' },
