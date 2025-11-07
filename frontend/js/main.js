@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeFilters();
     initializeModal();
     initializeAlertPanel();
+    initializeWebSocketHandlers();
     loadDrinks();
     checkAlerts();
     loadAlertPanel();
@@ -343,4 +344,155 @@ if ('serviceWorker' in navigator) {
                 console.log('❌ PWA Service Worker registration failed:', error);
             });
     });
+}
+
+// WebSocket Event Handlers
+function initializeWebSocketHandlers() {
+    // Listen for dispense status updates
+    wsClient.on('dispense:status', (data) => {
+        // Show progress container
+        const progressContainer = document.getElementById('dispense-progress');
+        if (progressContainer) {
+            progressContainer.classList.remove('hidden');
+        }
+        
+        // Update progress bar
+        const progressFill = document.querySelector('#dispense-progress .progress-fill');
+        if (progressFill && data.target_ml > 0) {
+            const progress = (data.progress_ml / data.target_ml) * 100;
+            progressFill.style.width = `${Math.min(progress, 100)}%`;
+        }
+        
+        // Update status text
+        const statusText = document.getElementById('dispense-status');
+        if (statusText) {
+            statusText.textContent = `Adagolás: ${data.progress_ml.toFixed(1)}ml / ${data.target_ml}ml (${data.flow_rate_ml_s.toFixed(1)} ml/s)`;
+        }
+        
+        // Hide dispense button during dispensing
+        const dispenseBtn = document.getElementById('btn-dispense');
+        if (dispenseBtn) {
+            dispenseBtn.disabled = true;
+            dispenseBtn.textContent = 'Adagolás folyamatban...';
+        }
+    });
+    
+    // Show alert on completion
+    wsClient.on('dispense:complete', (data) => {
+        // Clear timeout if active
+        if (window.dispenseTimeoutId) {
+            clearTimeout(window.dispenseTimeoutId);
+            window.dispenseTimeoutId = null;
+        }
+        
+        // Hide progress container
+        const progressContainer = document.getElementById('dispense-progress');
+        if (progressContainer) {
+            progressContainer.classList.add('hidden');
+        }
+        
+        // Reset progress bar
+        const progressFill = document.querySelector('#dispense-progress .progress-fill');
+        if (progressFill) {
+            progressFill.style.width = '0%';
+        }
+        
+        // Re-enable dispense button
+        const dispenseBtn = document.getElementById('btn-dispense');
+        if (dispenseBtn) {
+            dispenseBtn.disabled = false;
+            dispenseBtn.textContent = 'Kérek egy ilyet!';
+        }
+        
+        // Close modal after short delay
+        setTimeout(() => {
+            if (typeof UI !== 'undefined' && UI.hideModal) {
+                UI.hideModal('dispense-modal');
+            }
+            
+            // Reload drinks to update availability
+            if (typeof loadDrinks === 'function') {
+                loadDrinks();
+            }
+        }, 1500);
+        
+        // Show success alert
+        if (typeof UI !== 'undefined' && UI.showAlert) {
+            UI.showAlert(`Adagolás sikeres: ${data.actual_ml}ml`, 'success');
+        }
+    });
+    
+    // Show alert on maintenance complete
+    wsClient.on('maintenance:complete', (data) => {
+        if (typeof UI !== 'undefined' && UI.showAlert) {
+            UI.showAlert(`Karbantartás befejezve: ${data.pump_id}. pumpa`, 'success');
+        }
+        
+        // Refresh maintenance history if on maintenance page
+        if (typeof loadMaintenanceHistory === 'function') {
+            loadMaintenanceHistory();
+        }
+    });
+    
+    // Show error notifications
+    wsClient.on('esp32:error', (data) => {
+        // Clear timeout if active
+        if (window.dispenseTimeoutId) {
+            clearTimeout(window.dispenseTimeoutId);
+            window.dispenseTimeoutId = null;
+        }
+        
+        // Hide progress and re-enable button
+        const progressContainer = document.getElementById('dispense-progress');
+        if (progressContainer) {
+            progressContainer.classList.add('hidden');
+        }
+        
+        const dispenseBtn = document.getElementById('btn-dispense');
+        if (dispenseBtn) {
+            dispenseBtn.disabled = false;
+            dispenseBtn.textContent = 'Kérek egy ilyet!';
+        }
+        
+        if (typeof UI !== 'undefined' && UI.showAlert) {
+            UI.showAlert(`${data.message}`, 'error');
+        }
+    });
+    
+    // Update ESP32 status indicator
+    let lastHeartbeat = Date.now();
+    wsClient.on('esp32:heartbeat', (data) => {
+        lastHeartbeat = Date.now();
+        
+        const esp32Status = document.getElementById('esp32-status');
+        if (esp32Status) {
+            // WiFi signal strength icons
+            let wifiIcon = '📶';
+            if (data.wifi_rssi < -80) wifiIcon = '📵'; // Weak signal
+            else if (data.wifi_rssi < -70) wifiIcon = '📶'; // Medium signal
+            else wifiIcon = '📡'; // Strong signal
+            
+            // Memory warning
+            const memoryIcon = data.memory_used_percent > 80 ? '⚠️' : '';
+            
+            esp32Status.innerHTML = `
+                <span class="status-dot status-online"></span>
+                ESP32: Online ${wifiIcon} ${data.wifi_rssi}dBm ${memoryIcon}
+            `;
+            esp32Status.classList.add('online');
+            esp32Status.classList.remove('offline');
+        }
+    });
+    
+    // Check for ESP32 offline (no heartbeat for 30 seconds)
+    setInterval(() => {
+        if (Date.now() - lastHeartbeat > 30000) {
+            const esp32Status = document.getElementById('esp32-status');
+            if (esp32Status) {
+                esp32Status.innerHTML = '<span class="status-dot status-offline"></span> ESP32: Offline';
+                esp32Status.classList.add('offline');
+                esp32Status.classList.remove('online');
+            }
+        }
+    }, 5000);
 }
