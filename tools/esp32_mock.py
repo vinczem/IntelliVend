@@ -146,25 +146,20 @@ class ESP32Mock:
         # Handle complex multi-pump dispense (amount_ml is array)
         if isinstance(amount_ml, list):
             print(f"[ESP32] Multi-pump recipe: {recipe_name or 'Unknown'}")
-            # Calculate total amount and duration
-            total_ml = sum(item.get("quantity_ml", 0) for item in amount_ml)
-            if duration_ms is None:
-                flow_rate_ml_s = 20.0
-                duration_ms = int((total_ml / flow_rate_ml_s) * 1000)
             
             # Simulate random error
             if random.random() < self.error_rate:
                 error_codes = ["PUMP_STUCK", "FLOW_SENSOR_ERROR", "TIMEOUT"]
                 error_code = random.choice(error_codes)
-                self.publish_error(pump_id, error_code, f"Simulated error: {error_code}", "critical")
+                self.publish_error(amount_ml[0].get("pump_number", 1), error_code, f"Simulated error: {error_code}", "critical")
                 return
             
-            print(f"[ESP32] Starting multi-pump dispense: {len(amount_ml)} ingredients, {total_ml}ml total")
+            print(f"[ESP32] Starting multi-pump dispense: {len(amount_ml)} ingredients")
             
-            # Run dispense in separate thread
+            # Run dispense in separate thread for ALL pumps
             thread = threading.Thread(
-                target=self.simulate_dispense,
-                args=(pump_id, total_ml, duration_ms, recipe_name or "Multi-ingredient"),
+                target=self.simulate_multi_pump_dispense,
+                args=(amount_ml, recipe_name or "Multi-ingredient"),
                 daemon=True
             )
             thread.start()
@@ -192,6 +187,98 @@ class ESP32Mock:
                 daemon=True
             )
             thread.start()
+    
+    def simulate_multi_pump_dispense(self, ingredients: list, recipe_name: str):
+        """Több pumpás adagolás szimulálása (mint az ESP32)"""
+        total_start_time = time.time()
+        total_actual_ml = 0.0
+        total_requested_ml = 0.0
+        
+        # Process each pump sequentially (like real ESP32)
+        for idx, item in enumerate(ingredients):
+            pump_number = item.get("pump_number", 1)
+            quantity_ml = item.get("quantity_ml", 0.0)
+            ingredient_name = item.get("ingredient", "Unknown")
+            order = item.get("order", idx + 1)
+            
+            print(f"[ESP32] [{order}/{len(ingredients)}] Pump {pump_number}: {quantity_ml}ml of {ingredient_name}")
+            
+            # Calculate duration for this pump (assume 20ml/s)
+            flow_rate_ml_s = 20.0
+            duration_ms = int((quantity_ml / flow_rate_ml_s) * 1000)
+            if duration_ms < 500:
+                duration_ms = 500
+            
+            # Simulate this pump's dispense
+            self.pumps_active += 1
+            start_time = time.time()
+            duration_sec = duration_ms / 1000.0
+            
+            steps = int(duration_sec / 0.5)
+            if steps < 1:
+                steps = 1
+            
+            for i in range(steps + 1):
+                if self.stop_event.is_set():
+                    print(f"[ESP32] Dispense stopped (emergency)")
+                    self.publish_error(pump_number, "EMERGENCY_STOP", "Emergency stop triggered", "warning")
+                    self.pumps_active -= 1
+                    return
+                
+                progress = i / steps
+                current_ml = quantity_ml * progress
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                
+                # Calculate flow rate (ml/s)
+                if elapsed_ms > 0:
+                    flow_rate = (current_ml / elapsed_ms) * 1000
+                else:
+                    flow_rate = 0.0
+                
+                # Publish status (individual pump progress)
+                status = {
+                    "pump_id": pump_number,
+                    "state": "dispensing" if progress < 1.0 else "idle",
+                    "progress_ml": round(current_ml, 2),
+                    "target_ml": quantity_ml,
+                    "flow_rate_ml_s": round(flow_rate, 2),
+                    "elapsed_ms": elapsed_ms,
+                    "timestamp": datetime.utcnow().isoformat() + "Z"
+                }
+                
+                self.client.publish("intellivend/status", json.dumps(status), qos=0)
+                print(f"[ESP32] Pump {pump_number} Status: {current_ml:.1f}/{quantity_ml}ml ({progress*100:.0f}%)")
+                
+                if i < steps:
+                    time.sleep(0.5)
+            
+            # Simulate slight variance (+/- 5%)
+            actual_ml = quantity_ml * random.uniform(0.95, 1.05)
+            actual_ml = round(actual_ml, 2)
+            
+            total_actual_ml += actual_ml
+            total_requested_ml += quantity_ml
+            
+            print(f"[ESP32] Pump {pump_number} complete: {actual_ml}ml")
+            self.pumps_active -= 1
+            
+            # Small delay between pumps (like real ESP32)
+            if idx < len(ingredients) - 1:
+                time.sleep(0.5)
+        
+        # Send single completion message for entire recipe
+        total_duration_ms = int((time.time() - total_start_time) * 1000)
+        complete = {
+            "pump_id": 0,  # 0 = multi-pump recipe
+            "recipe_name": recipe_name,
+            "requested_ml": round(total_requested_ml, 2),
+            "actual_ml": round(total_actual_ml, 2),
+            "duration_ms": total_duration_ms,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+        
+        self.client.publish("intellivend/dispense/complete", json.dumps(complete), qos=1)
+        print(f"[ESP32] ✓ Recipe complete: {total_actual_ml:.1f}ml total in {total_duration_ms}ms")
     
     def simulate_dispense(self, pump_id: int, amount_ml: float, duration_ms: int, recipe_name: str):
         """Adagolás szimulálása progress update-ekkel"""

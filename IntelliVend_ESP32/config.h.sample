@@ -24,36 +24,38 @@
 // Device Configuration
 // ============================================
 #define DEVICE_ID "intellivend_esp32_001"
-#define FIRMWARE_VERSION "1.0.0"
+#define FIRMWARE_VERSION "2.0.0"
 
 // ============================================
 // Pump GPIO Pins (Relay Board Channels)
 // ESP32-S3-DEV-N16R8 connections
 // 8-channel relay board for peristaltic pumps
+// Available GPIO: 1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,21,35,36,37,38,39,40,41,42,43,44,45,47,48
+// NOTE: GPIO 19-32 do NOT exist on ESP32-S3 (reserved for SPI Flash)
 // ============================================
 #define PUMP_1_PIN 2
 #define PUMP_2_PIN 4
 #define PUMP_3_PIN 5
-#define PUMP_4_PIN 18
-#define PUMP_5_PIN 19
-#define PUMP_6_PIN 21
-#define PUMP_7_PIN 22
-#define PUMP_8_PIN 23
+#define PUMP_4_PIN 6
+#define PUMP_5_PIN 7
+#define PUMP_6_PIN 15
+#define PUMP_7_PIN 16
+#define PUMP_8_PIN 17
 
 // ============================================
 // Flow Meter GPIO Pins - YF-S201
 // Hall effect water flow sensors
 // Pulse output: ~450 pulses per liter
-// NOTE: ESP32-S3 does NOT have GPIO 22-32 (reserved for SPI Flash)
+// NOTE: GPIO 19-32 do NOT exist on ESP32-S3 (reserved for SPI Flash)
 // ============================================
-#define FLOW_METER_1_PIN 14
-#define FLOW_METER_2_PIN 12
-#define FLOW_METER_3_PIN 13
-#define FLOW_METER_4_PIN 15
-#define FLOW_METER_5_PIN 16
-#define FLOW_METER_6_PIN 17
-#define FLOW_METER_7_PIN 33  // Changed from 25 (GPIO 25 doesn't exist on ESP32-S3)
-#define FLOW_METER_8_PIN 34  // Changed from 26 (GPIO 26 doesn't exist on ESP32-S3)
+#define FLOW_METER_1_PIN 8
+#define FLOW_METER_2_PIN 9
+#define FLOW_METER_3_PIN 10
+#define FLOW_METER_4_PIN 11
+#define FLOW_METER_5_PIN 12
+#define FLOW_METER_6_PIN 13
+#define FLOW_METER_7_PIN 14
+#define FLOW_METER_8_PIN 18
 
 // YF-S201 calibration constant (pulses per liter)
 // Manufacturer spec: ~450 pulses/L
@@ -63,7 +65,7 @@
 // ============================================
 // Status LED
 // ============================================
-#define STATUS_LED_PIN 27
+#define STATUS_LED_PIN 21  // Changed from 27 (GPIO 27 doesn't exist on ESP32-S3)
 
 // ============================================
 // Timing Configuration
@@ -89,5 +91,16 @@
 // ============================================
 #define SERIAL_BAUD_RATE 115200
 #define DEBUG_MODE true  // Set to false in production
+
+// ============================================
+// SIMULATION MODE (for testing without flow meters)
+// Set to true to simulate flow without actual sensors
+// Set to false when real flow meters are connected
+// ============================================
+#define SIMULATE_FLOW_METERS false  // ⚠️ Set to true for testing without flow meters!
+
+// Flow simulation settings (only used if SIMULATE_FLOW_METERS = true)
+#define SIMULATED_FLOW_RATE 50.0    // ml/second (simulated pump speed)
+#define SIMULATION_UPDATE_MS 100    // Update flow every 100ms
 
 #endif
