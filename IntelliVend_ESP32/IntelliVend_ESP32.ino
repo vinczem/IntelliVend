@@ -104,6 +104,7 @@ void flushPump(int pumpNumber, int durationMS);
 float getFlowML(int pumpIndex);
 void resetFlowMeter(int pumpIndex);
 void publishStatus(String topic, JsonDocument& doc);
+void publishDispenseStatus(int pumpNumber, String state, float progressML, float targetML, unsigned long elapsedMS);
 void publishDispenseComplete(int pumpNumber, String recipeName, float actualML, float requestedML, unsigned long durationMS);
 void publishMaintenanceComplete(int pumpNumber, String actionType, unsigned long durationMS);
 void publishError(int pumpNumber, String errorCode, String message, String severity = "error");
@@ -553,6 +554,10 @@ void runPump(int pumpNumber, float volumeML, String ingredient, bool publishComp
       if (now - lastReport > 2000) {
         Serial.printf("[PUMP %d] 🔵 SIMULATED Progress: %.1f/%.1f ml (%.0f%%)\n", 
                       pumpNumber, simulatedML, targetML, (simulatedML / targetML) * 100.0);
+        
+        // Publish status to MQTT for frontend progress bar
+        publishDispenseStatus(pumpNumber, "dispensing", simulatedML, targetML, now - startTime);
+        
         lastReport = now;
       }
       
@@ -576,6 +581,10 @@ void runPump(int pumpNumber, float volumeML, String ingredient, bool publishComp
         float currentML = getFlowML(pumpIndex);
         Serial.printf("[PUMP %d] Progress: %.1f/%.1f ml (%.0f%%)\n", 
                       pumpNumber, currentML, targetML, (currentML / targetML) * 100.0);
+        
+        // Publish status to MQTT for frontend progress bar
+        publishDispenseStatus(pumpNumber, "dispensing", currentML, targetML, now - startTime);
+        
         lastReport = now;
       }
       
@@ -690,6 +699,34 @@ void publishHeartbeat() {
   
   if (DEBUG_MODE) {
     Serial.println("[HEARTBEAT] Published");
+  }
+}
+
+void publishDispenseStatus(int pumpNumber, String state, float progressML, float targetML, unsigned long elapsedMS) {
+  JsonDocument doc;
+  
+  doc["pump_id"] = pumpNumber;
+  doc["state"] = state;
+  doc["progress_ml"] = progressML;
+  doc["target_ml"] = targetML;
+  doc["elapsed_ms"] = elapsedMS;
+  
+  // Calculate flow rate (ml/s)
+  if (elapsedMS > 0) {
+    float flowRate = (progressML / elapsedMS) * 1000.0;
+    doc["flow_rate_ml_s"] = flowRate;
+  } else {
+    doc["flow_rate_ml_s"] = 0.0;
+  }
+  
+  char buffer[256];
+  serializeJson(doc, buffer);
+  
+  mqtt.publish("intellivend/status", buffer);
+  
+  if (DEBUG_MODE) {
+    Serial.printf("[MQTT] → intellivend/status (Pump %d: %.1f/%.1f ml)\n", 
+                  pumpNumber, progressML, targetML);
   }
 }
 
