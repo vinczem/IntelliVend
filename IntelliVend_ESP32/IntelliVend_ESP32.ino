@@ -550,8 +550,8 @@ void runPump(int pumpNumber, float volumeML, String ingredient, bool publishComp
         break;
       }
       
-      // Progress report every 2 seconds
-      if (now - lastReport > 2000) {
+      // Progress report every 500ms (for smooth progress bar with small volumes)
+      if (now - lastReport > 500) {
         Serial.printf("[PUMP %d] 🔵 SIMULATED Progress: %.1f/%.1f ml (%.0f%%)\n", 
                       pumpNumber, simulatedML, targetML, (simulatedML / targetML) * 100.0);
         
@@ -576,8 +576,8 @@ void runPump(int pumpNumber, float volumeML, String ingredient, bool publishComp
         break;
       }
       
-      // Progress report every 2 seconds
-      if (now - lastReport > 2000) {
+      // Progress report every 500ms (for smooth progress bar with small volumes)
+      if (now - lastReport > 500) {
         float currentML = getFlowML(pumpIndex);
         Serial.printf("[PUMP %d] Progress: %.1f/%.1f ml (%.0f%%)\n", 
                       pumpNumber, currentML, targetML, (currentML / targetML) * 100.0);
