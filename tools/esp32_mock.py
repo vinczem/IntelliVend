@@ -194,6 +194,12 @@ class ESP32Mock:
         total_actual_ml = 0.0
         total_requested_ml = 0.0
         
+        # Calculate total recipe volume for cumulative progress
+        total_recipe_ml = sum(item.get("quantity_ml", 0.0) for item in ingredients)
+        cumulative_ml = 0.0
+        
+        print(f"[ESP32] Recipe: {recipe_name}, Total volume: {total_recipe_ml:.1f}ml")
+        
         # Process each pump sequentially (like real ESP32)
         for idx, item in enumerate(ingredients):
             pump_number = item.get("pump_number", 1)
@@ -201,7 +207,7 @@ class ESP32Mock:
             ingredient_name = item.get("ingredient", "Unknown")
             order = item.get("order", idx + 1)
             
-            print(f"[ESP32] [{order}/{len(ingredients)}] Pump {pump_number}: {quantity_ml}ml of {ingredient_name}")
+            print(f"[ESP32] [{order}/{len(ingredients)}] Pump {pump_number}: {quantity_ml}ml of {ingredient_name} (cumulative: {cumulative_ml:.1f}/{total_recipe_ml:.1f}ml)")
             
             # Calculate duration for this pump (assume 20ml/s)
             flow_rate_ml_s = 20.0
@@ -229,25 +235,29 @@ class ESP32Mock:
                 current_ml = quantity_ml * progress
                 elapsed_ms = int((time.time() - start_time) * 1000)
                 
-                # Calculate flow rate (ml/s)
-                if elapsed_ms > 0:
-                    flow_rate = (current_ml / elapsed_ms) * 1000
+                # Calculate cumulative recipe progress
+                recipe_progress_ml = cumulative_ml + current_ml
+                recipe_elapsed_ms = int((time.time() - total_start_time) * 1000)
+                
+                # Calculate flow rate (ml/s) based on total elapsed time
+                if recipe_elapsed_ms > 0:
+                    flow_rate = (recipe_progress_ml / recipe_elapsed_ms) * 1000
                 else:
                     flow_rate = 0.0
                 
-                # Publish status (individual pump progress)
+                # Publish status (CUMULATIVE recipe progress, not individual pump)
                 status = {
                     "pump_id": pump_number,
                     "state": "dispensing" if progress < 1.0 else "idle",
-                    "progress_ml": round(current_ml, 2),
-                    "target_ml": quantity_ml,
+                    "progress_ml": round(recipe_progress_ml, 2),  # Cumulative!
+                    "target_ml": total_recipe_ml,  # Total recipe volume!
                     "flow_rate_ml_s": round(flow_rate, 2),
-                    "elapsed_ms": elapsed_ms,
+                    "elapsed_ms": recipe_elapsed_ms,
                     "timestamp": datetime.utcnow().isoformat() + "Z"
                 }
                 
                 self.client.publish("intellivend/status", json.dumps(status), qos=0)
-                print(f"[ESP32] Pump {pump_number} Status: {current_ml:.1f}/{quantity_ml}ml ({progress*100:.0f}%)")
+                print(f"[ESP32] Recipe Status: {recipe_progress_ml:.1f}/{total_recipe_ml:.1f}ml ({(recipe_progress_ml/total_recipe_ml)*100:.0f}%)")
                 
                 if i < steps:
                     time.sleep(0.5)
@@ -258,8 +268,9 @@ class ESP32Mock:
             
             total_actual_ml += actual_ml
             total_requested_ml += quantity_ml
+            cumulative_ml += actual_ml  # Update cumulative progress for next pump
             
-            print(f"[ESP32] Pump {pump_number} complete: {actual_ml}ml")
+            print(f"[ESP32] Pump {pump_number} complete: {actual_ml}ml (cumulative: {cumulative_ml:.1f}ml)")
             self.pumps_active -= 1
             
             # Small delay between pumps (like real ESP32)

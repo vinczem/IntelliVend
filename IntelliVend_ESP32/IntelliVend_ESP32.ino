@@ -99,7 +99,7 @@ void handleDispenseCommand(JsonDocument& doc);
 void handleFlushCommand(JsonDocument& doc);
 void handleCalibrationCommand(JsonDocument& doc);
 void handleEmergencyStop(JsonDocument& doc);
-void runPump(int pumpNumber, float volumeML, String ingredient = "", bool publishCompletion = true);
+void runPump(int pumpNumber, float volumeML, String ingredient = "", bool publishCompletion = true, float cumulativeML = 0.0, float totalRecipeML = 0.0, unsigned long recipeStartTime = 0);
 void flushPump(int pumpNumber, int durationMS);
 float getFlowML(int pumpIndex);
 void resetFlowMeter(int pumpIndex);
@@ -338,11 +338,20 @@ void handleDispenseCommand(JsonDocument& doc) {
   
   setStatusLED(255, 255, 0);  // Yellow = Dispensing
   
+  // Calculate total recipe volume first (for cumulative progress)
+  float totalRecipeML = 0.0;
+  for (JsonVariant item : amountArray) {
+    totalRecipeML += item["quantity_ml"] | 0.0;
+  }
+  
   int totalPumps = amountArray.size();
   int currentPumpIndex = 0;
   float totalActualML = 0.0;
   float totalRequestedML = 0.0;
+  float cumulativeML = 0.0;  // Running total for progress bar
   unsigned long totalStartTime = millis();
+  
+  Serial.printf("║ Total volume: %.1f ml\n", totalRecipeML);
   
   // Process each ingredient
   for (JsonVariant item : amountArray) {
@@ -361,16 +370,19 @@ void handleDispenseCommand(JsonDocument& doc) {
       continue;
     }
     
-    Serial.printf("\n[%d/%d] Pump %d: %.1f ml of %s\n", 
-                  currentPumpIndex, totalPumps, pumpNumber, quantityML, ingredient.c_str());
+    Serial.printf("\n[%d/%d] Pump %d: %.1f ml of %s (cumulative: %.1f/%.1f ml)\n", 
+                  currentPumpIndex, totalPumps, pumpNumber, quantityML, ingredient.c_str(),
+                  cumulativeML, totalRecipeML);
     
-    // Run pump with flow meter monitoring (no individual completion message)
-    runPump(pumpNumber, quantityML, ingredient, false);  // false = don't publish completion
+    // Run pump with cumulative progress tracking
+    runPump(pumpNumber, quantityML, ingredient, false, cumulativeML, totalRecipeML, totalStartTime);
     
     // Track totals for final completion message
     int pumpIndex = pumpNumber - 1;
-    totalActualML += totalDispensedML[pumpIndex];
+    float actualML = totalDispensedML[pumpIndex];
+    totalActualML += actualML;
     totalRequestedML += quantityML;
+    cumulativeML += actualML;  // Update cumulative progress
     
     delay(500);  // Small delay between pumps
   }
@@ -492,10 +504,15 @@ void handleEmergencyStop(JsonDocument& doc) {
 // RUN PUMP WITH FLOW METER
 // ============================================
 
-void runPump(int pumpNumber, float volumeML, String ingredient, bool publishCompletion) {
+void runPump(int pumpNumber, float volumeML, String ingredient, bool publishCompletion, 
+             float cumulativeML, float totalRecipeML, unsigned long recipeStartTime) {
   if (pumpNumber < 1 || pumpNumber > NUM_PUMPS) {
     return;
   }
+  
+  // Use recipe-level progress if totalRecipeML > 0 (multi-pump recipe)
+  bool useRecipeProgress = (totalRecipeML > 0.0);
+  unsigned long effectiveStartTime = useRecipeProgress ? recipeStartTime : millis();
   
   int pumpIndex = pumpNumber - 1;
   int relayPin = pumpPins[pumpIndex];
@@ -552,11 +569,28 @@ void runPump(int pumpNumber, float volumeML, String ingredient, bool publishComp
       
       // Progress report every 500ms (for smooth progress bar with small volumes)
       if (now - lastReport > 500) {
-        Serial.printf("[PUMP %d] 🔵 SIMULATED Progress: %.1f/%.1f ml (%.0f%%)\n", 
-                      pumpNumber, simulatedML, targetML, (simulatedML / targetML) * 100.0);
+        // Calculate progress values (recipe-level or pump-level)
+        float progressML, targetMLforStatus;
+        unsigned long elapsedMS;
+        
+        if (useRecipeProgress) {
+          // Recipe-level progress (cumulative across all pumps)
+          progressML = cumulativeML + simulatedML;
+          targetMLforStatus = totalRecipeML;
+          elapsedMS = now - effectiveStartTime;
+          Serial.printf("[RECIPE] 🔵 Progress: %.1f/%.1f ml (%.0f%%)\n", 
+                        progressML, targetMLforStatus, (progressML / targetMLforStatus) * 100.0);
+        } else {
+          // Single pump progress
+          progressML = simulatedML;
+          targetMLforStatus = targetML;
+          elapsedMS = now - startTime;
+          Serial.printf("[PUMP %d] 🔵 SIMULATED Progress: %.1f/%.1f ml (%.0f%%)\n", 
+                        pumpNumber, progressML, targetMLforStatus, (progressML / targetMLforStatus) * 100.0);
+        }
         
         // Publish status to MQTT for frontend progress bar
-        publishDispenseStatus(pumpNumber, "dispensing", simulatedML, targetML, now - startTime);
+        publishDispenseStatus(pumpNumber, "dispensing", progressML, targetMLforStatus, elapsedMS);
         
         lastReport = now;
       }
@@ -579,11 +613,29 @@ void runPump(int pumpNumber, float volumeML, String ingredient, bool publishComp
       // Progress report every 500ms (for smooth progress bar with small volumes)
       if (now - lastReport > 500) {
         float currentML = getFlowML(pumpIndex);
-        Serial.printf("[PUMP %d] Progress: %.1f/%.1f ml (%.0f%%)\n", 
-                      pumpNumber, currentML, targetML, (currentML / targetML) * 100.0);
+        
+        // Calculate progress values (recipe-level or pump-level)
+        float progressML, targetMLforStatus;
+        unsigned long elapsedMS;
+        
+        if (useRecipeProgress) {
+          // Recipe-level progress (cumulative across all pumps)
+          progressML = cumulativeML + currentML;
+          targetMLforStatus = totalRecipeML;
+          elapsedMS = now - effectiveStartTime;
+          Serial.printf("[RECIPE] Progress: %.1f/%.1f ml (%.0f%%)\n", 
+                        progressML, targetMLforStatus, (progressML / targetMLforStatus) * 100.0);
+        } else {
+          // Single pump progress
+          progressML = currentML;
+          targetMLforStatus = targetML;
+          elapsedMS = now - startTime;
+          Serial.printf("[PUMP %d] Progress: %.1f/%.1f ml (%.0f%%)\n", 
+                        pumpNumber, progressML, targetMLforStatus, (progressML / targetMLforStatus) * 100.0);
+        }
         
         // Publish status to MQTT for frontend progress bar
-        publishDispenseStatus(pumpNumber, "dispensing", currentML, targetML, now - startTime);
+        publishDispenseStatus(pumpNumber, "dispensing", progressML, targetMLforStatus, elapsedMS);
         
         lastReport = now;
       }
