@@ -21,11 +21,16 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <ArduinoOTA.h>
+#include <ESPmDNS.h>
 #include "config.h"
 
 // WiFi and MQTT clients
 WiFiClient espClient;
 PubSubClient mqtt(espClient);
+
+// OTA Update state
+bool otaInProgress = false;
 
 // ============================================
 // Hardware Configuration
@@ -91,6 +96,7 @@ String currentRecipeName = "";
 
 void setupWiFi();
 void setupMQTT();
+void setupOTA();
 void setupFlowMeters();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 void reconnectMQTT();
@@ -157,6 +163,9 @@ void setup() {
   setupWiFi();
   setupMQTT();
   
+  // Setup OTA (Over-The-Air updates)
+  setupOTA();
+  
   systemReady = true;
   Serial.println("\n[INFO] System ready!");
   setStatusLED(0, 255, 0);  // Green = Ready
@@ -167,6 +176,14 @@ void setup() {
 // ============================================
 
 void loop() {
+  // Handle OTA updates (highest priority!)
+  ArduinoOTA.handle();
+  
+  // Don't do anything else during OTA update
+  if (otaInProgress) {
+    return;
+  }
+  
   // Maintain MQTT connection
   if (!mqtt.connected()) {
     if (millis() - lastReconnect > RECONNECT_INTERVAL) {
@@ -273,7 +290,81 @@ void reconnectMQTT() {
 }
 
 // ============================================
-// FLOW METER SETUP
+// OTA UPDATE SETUP
+// ============================================
+
+void setupOTA() {
+  Serial.println("\n[OTA] Configuring Over-The-Air updates...");
+  
+  // Set OTA hostname (unique name for network discovery)
+  String hostname = "IntelliVend-" + String(DEVICE_ID);
+  ArduinoOTA.setHostname(hostname.c_str());
+  
+  // Optional: Set OTA password for security
+  // ArduinoOTA.setPassword("your_ota_password");
+  
+  // OTA callbacks
+  ArduinoOTA.onStart([]() {
+    otaInProgress = true;
+    String type = (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem";
+    
+    Serial.println("\n╔════════════════════════════════════════╗");
+    Serial.println("║     OTA UPDATE STARTED                ║");
+    Serial.println("╚════════════════════════════════════════╝");
+    Serial.printf("[OTA] Updating %s...\n", type.c_str());
+    
+    // Stop all pumps immediately
+    for (int i = 0; i < NUM_PUMPS; i++) {
+      digitalWrite(pumpPins[i], HIGH);  // Active LOW: HIGH = OFF
+    }
+    
+    // Disconnect MQTT to stop heartbeat
+    mqtt.disconnect();
+    
+    setStatusLED(0, 0, 255);  // Blue = OTA Update
+  });
+  
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\n[OTA] ✓ Update complete!");
+    Serial.println("[OTA] Rebooting...\n");
+  });
+  
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    static unsigned long lastReport = 0;
+    unsigned long now = millis();
+    
+    // Report every 2 seconds
+    if (now - lastReport > 2000 || progress == total) {
+      unsigned int percent = (progress / (total / 100));
+      Serial.printf("[OTA] Progress: %u%%\r", percent);
+      lastReport = now;
+    }
+  });
+  
+  ArduinoOTA.onError([](ota_error_t error) {
+    otaInProgress = false;
+    Serial.printf("\n[OTA] Error[%u]: ", error);
+    
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    
+    setStatusLED(255, 0, 0);  // Red = Error
+    delay(3000);
+    setStatusLED(0, 255, 0);  // Green = Back to normal
+  });
+  
+  ArduinoOTA.begin();
+  
+  Serial.printf("[OTA] Ready! Hostname: %s\n", hostname.c_str());
+  Serial.printf("[OTA] IP Address: %s\n", WiFi.localIP().toString().c_str());
+  Serial.println("[OTA] Use Arduino IDE to upload firmware");
+}
+
+// ============================================
+// FLOW METERS SETUP
 // ============================================
 
 void setupFlowMeters() {
@@ -737,12 +828,17 @@ void resetFlowMeter(int pumpIndex) {
 void publishHeartbeat() {
   JsonDocument doc;
   
+  doc["device_id"] = DEVICE_ID;
+  doc["hostname"] = "IntelliVend-" + String(DEVICE_ID);
+  doc["ip_address"] = WiFi.localIP().toString();
   doc["uptime_ms"] = millis();
   doc["wifi_rssi"] = WiFi.RSSI();
+  doc["wifi_ssid"] = WiFi.SSID();
   doc["free_heap"] = ESP.getFreeHeap();
   doc["total_heap"] = ESP.getHeapSize();
   doc["pumps_active"] = 0;  // TODO: Track active pumps
   doc["firmware_version"] = FIRMWARE_VERSION;
+  doc["ota_ready"] = !otaInProgress;
   
   char buffer[512];
   serializeJson(doc, buffer);

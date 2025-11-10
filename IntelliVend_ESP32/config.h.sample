@@ -24,7 +24,7 @@
 // Device Configuration
 // ============================================
 #define DEVICE_ID "intellivend_esp32_001"
-#define FIRMWARE_VERSION "2.0.3"
+#define FIRMWARE_VERSION "2.0.4"
 
 // ============================================
 // Pump GPIO Pins (Relay Board Channels)
