@@ -70,7 +70,7 @@
 // ============================================
 // Timing Configuration
 // ============================================
-#define HEARTBEAT_INTERVAL 300000  // 5 minutes in milliseconds
+#define HEARTBEAT_INTERVAL 10000  // 10 seconds in milliseconds
 #define RECONNECT_INTERVAL 5000    // 5 seconds
 #define PUMP_TIMEOUT 60000         // 60 seconds max pump run time
 
@@ -97,7 +97,7 @@
 // Set to true to simulate flow without actual sensors
 // Set to false when real flow meters are connected
 // ============================================
-#define SIMULATE_FLOW_METERS false  // ⚠️ Set to true for testing without flow meters!
+#define SIMULATE_FLOW_METERS false  // Set to true for testing without flow meters!
 
 // Flow simulation settings (only used if SIMULATE_FLOW_METERS = true)
 #define SIMULATED_FLOW_RATE 50.0    // ml/second (simulated pump speed)

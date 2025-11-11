@@ -99,7 +99,7 @@ A `config.h` fájlban ellenőrizd a pumpa relay és flow meter pineket:
 #define STATUS_LED_PIN 21
 ```
 
-**⚠️ FONTOS:** ESP32-S3-DEV-N16R8 **CSAK az alábbi GPIO-kat** használja:
+** FONTOS:** ESP32-S3-DEV-N16R8 **CSAK az alábbi GPIO-kat** használja:
 - **1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21**
 - **35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 47, 48**
 - **GPIO 19-34 NEM LÉTEZIK** (SPI Flash-nek fenntartva)!
@@ -179,7 +179,7 @@ Sensor 6   →  GPIO 17
 Sensor 7   →  GPIO 33 ⚠️
 Sensor 8   →  GPIO 34 ⚠️
 ```
-**⚠️ FIGYELEM:** GPIO 22-32 **NEM ELÉRHETŐ** ESP32-S3-on (SPI Flash)!
+**FIGYELEM:** GPIO 22-32 **NEM ELÉRHETŐ** ESP32-S3-on (SPI Flash)!
 
 ### Pumpa bekötés
 

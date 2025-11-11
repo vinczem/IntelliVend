@@ -211,14 +211,20 @@ EMAIL_PASSWORD=your_app_password
 
 ## Hardver
 
-### ESP32 Alkatrészlista
+### Alkatrészlista
 - **ESP32-S3-DEV-N16R8** (16MB Flash, 8MB PSRAM)
+  Hestore: https://www.hestore.hu/prod_10048179.html (4582 Ft)
 - **8x Micro Peristaltic Pump** (DC 6-12V, 500 motor, planetary deceleration)
+  Ali: https://www.aliexpress.com/item/1005008196853992.html?spm=a2g0o.order_list.order_list_main.5.4d5518023nx9sv (4.37 USD)
 - **8x YF-S201 Hall Effect Water Flow Sensor** (~450 pulzus/liter)
+  Ali: https://www.aliexpress.com/item/1005008196853992.html?spm=a2g0o.order_list.order_list_main.5.4d5518023nx9sv (3.30 USD)
+  Hestore: https://www.hestore.hu/prod_10036440.html (2089 Ft)
 - **8-Channel Relay Board** (pumpa vezérléshez)
+  Hestore: https://www.hestore.hu/prod_10035561.html (3062 Ft) 
 - **12V/5A+ tápegység** (pumpákhoz)
 - **5V tápegység vagy USB** (ESP32, relay, szenzorok)
 - **Csövek, csatlakozók**
+  Szűkítők: https://www.aliexpress.com/item/1005008582765781.html?spm=a2g0o.detail.pcDetailBottomMoreOtherSeller.48.6a3b6e826e8254&gps-id=pcDetailBottomMoreOtherSeller&scm=1007.40050.354490.0&scm_id=1007.40050.354490.0&scm-url=1007.40050.354490.0&pvid=369644fe-10e4-41b1-8d89-e63028f0f822&_t=gps-id:pcDetailBottomMoreOtherSeller,scm-url:1007.40050.354490.0,pvid:369644fe-10e4-41b1-8d89-e63028f0f822,tpp_buckets:668%232846%238111%231996&pdp_ext_f=%7B%22order%22%3A%22308%22%2C%22eval%22%3A%221%22%2C%22sceneId%22%3A%2230050%22%2C%22fromPage%22%3A%22recommend%22%7D&pdp_npi=6%40dis%21USD%213.13%211.57%21%21%2122.17%2111.09%21%40211b813b17627987144042502e91ab%2112000045830417832%21rec%21HU%21704575041%21X%211%210%21n_tag%3A-29919%3Bd%3A81b1d44d%3Bm03_new_user%3A-29895&utparam-url=scene%3ApcDetailBottomMoreOtherSeller%7Cquery_from%3A%7Cx_object_id%3A1005008582765781%7C_p_origin_prod%3A
 
 ### GPIO Pin kiosztás
 
