@@ -47,20 +47,40 @@ ESP32-S3 alapú firmware peristaltikus pumpás italautomatához YF-S201 áramlá
 
 ## GPIO Pin Kiosztás
 
+**⚠️ ESP32-S3-DEV-N16R8 Elérhető GPIO-k:**
+```
+1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21
+35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 47, 48
+```
+**❌ GPIO 19-34 NEM LÉTEZIK** (SPI Flash-nek fenntartva)!
+
 ### Relay Vezérlés (Pumpák)
 ```
-Pump 1-8 → GPIO: 2, 4, 5, 18, 19, 21, 22, 23
+Pump 1 → GPIO 2
+Pump 2 → GPIO 4
+Pump 3 → GPIO 5
+Pump 4 → GPIO 6
+Pump 5 → GPIO 7
+Pump 6 → GPIO 15
+Pump 7 → GPIO 16
+Pump 8 → GPIO 17
 ```
 
 ### YF-S201 Flow Sensorok
 ```
-Sensor 1-8 → GPIO: 14, 12, 13, 15, 16, 17, 33, 34
+Flow Meter 1 → GPIO 8
+Flow Meter 2 → GPIO 9
+Flow Meter 3 → GPIO 10
+Flow Meter 4 → GPIO 11
+Flow Meter 5 → GPIO 12
+Flow Meter 6 → GPIO 13
+Flow Meter 7 → GPIO 14
+Flow Meter 8 → GPIO 18
 ```
-**FIGYELEM:** ESP32-S3 nem rendelkezik GPIO 22-32 pinekkel (SPI Flash-nek fenntartva)!
 
 ### Egyéb
 ```
-Status LED → GPIO 27
+Status LED → GPIO 21
 ```
 
 ## Fontos jellemzők

@@ -99,11 +99,12 @@ void handleDispenseCommand(JsonDocument& doc);
 void handleFlushCommand(JsonDocument& doc);
 void handleCalibrationCommand(JsonDocument& doc);
 void handleEmergencyStop(JsonDocument& doc);
-void runPump(int pumpNumber, float volumeML, String ingredient = "");
+void runPump(int pumpNumber, float volumeML, String ingredient = "", bool publishCompletion = true, float cumulativeML = 0.0, float totalRecipeML = 0.0, unsigned long recipeStartTime = 0);
 void flushPump(int pumpNumber, int durationMS);
 float getFlowML(int pumpIndex);
 void resetFlowMeter(int pumpIndex);
 void publishStatus(String topic, JsonDocument& doc);
+void publishDispenseStatus(int pumpNumber, String state, float progressML, float targetML, unsigned long elapsedMS);
 void publishDispenseComplete(int pumpNumber, String recipeName, float actualML, float requestedML, unsigned long durationMS);
 void publishMaintenanceComplete(int pumpNumber, String actionType, unsigned long durationMS);
 void publishError(int pumpNumber, String errorCode, String message, String severity = "error");
@@ -123,19 +124,30 @@ void setup() {
   Serial.printf("Device ID: %s\n", DEVICE_ID);
   Serial.println("Hardware: ESP32-S3-DEV-N16R8");
   Serial.println("Pumps: 8x Peristaltic + Relay");
+  
+  #ifdef SIMULATE_FLOW_METERS
+  if (SIMULATE_FLOW_METERS) {
+    Serial.println("Sensors: 🔵 SIMULATED (Flow meters not connected)");
+    Serial.printf("Sim Flow Rate: %.1f ml/sec\n", SIMULATED_FLOW_RATE);
+  } else {
+    Serial.println("Sensors: 8x YF-S201 Flow Meter");
+  }
+  #else
   Serial.println("Sensors: 8x YF-S201 Flow Meter");
+  #endif
+  
   Serial.println("=================================\n");
 
   // Initialize status LED
   // pinMode(STATUS_LED_PIN, OUTPUT);
   // setStatusLED(255, 255, 0);  // Yellow = Initializing
   
-  // Initialize pump relay pins (active HIGH for relay trigger)
+  // Initialize pump relay pins (Active LOW - relay triggers on LOW signal)
   Serial.println("[INIT] Configuring pump relay pins...");
   for (int i = 0; i < NUM_PUMPS; i++) {
     pinMode(pumpPins[i], OUTPUT);
-    digitalWrite(pumpPins[i], LOW);  // Relay OFF (pump OFF)
-    Serial.printf("  Pump %d -> GPIO %d\n", i + 1, pumpPins[i]);
+    digitalWrite(pumpPins[i], HIGH);  // Relay OFF (Active LOW: HIGH = OFF)
+    Serial.printf("  Pump %d -> GPIO %d (Active LOW)\n", i + 1, pumpPins[i]);
   }
   
   // Initialize flow meters
@@ -326,8 +338,25 @@ void handleDispenseCommand(JsonDocument& doc) {
   
   setStatusLED(255, 255, 0);  // Yellow = Dispensing
   
+  // Calculate total recipe volume first (for cumulative progress)
+  float totalRecipeML = 0.0;
+  for (JsonVariant item : amountArray) {
+    totalRecipeML += item["quantity_ml"] | 0.0;
+  }
+  
+  int totalPumps = amountArray.size();
+  int currentPumpIndex = 0;
+  float totalActualML = 0.0;
+  float totalRequestedML = 0.0;
+  float cumulativeML = 0.0;  // Running total for progress bar
+  unsigned long totalStartTime = millis();
+  
+  Serial.printf("║ Total volume: %.1f ml\n", totalRecipeML);
+  
   // Process each ingredient
   for (JsonVariant item : amountArray) {
+    currentPumpIndex++;
+    
     int pumpNumber = item["pump_number"] | 0;
     float quantityML = item["quantity_ml"] | 0.0;
     String ingredient = item["ingredient"] | "Unknown";
@@ -341,14 +370,26 @@ void handleDispenseCommand(JsonDocument& doc) {
       continue;
     }
     
-    Serial.printf("\n[%d/%d] Pump %d: %.1f ml of %s\n", 
-                  order, amountArray.size(), pumpNumber, quantityML, ingredient.c_str());
+    Serial.printf("\n[%d/%d] Pump %d: %.1f ml of %s (cumulative: %.1f/%.1f ml)\n", 
+                  currentPumpIndex, totalPumps, pumpNumber, quantityML, ingredient.c_str(),
+                  cumulativeML, totalRecipeML);
     
-    // Run pump with flow meter monitoring
-    runPump(pumpNumber, quantityML, ingredient);
+    // Run pump with cumulative progress tracking
+    runPump(pumpNumber, quantityML, ingredient, false, cumulativeML, totalRecipeML, totalStartTime);
+    
+    // Track totals for final completion message
+    int pumpIndex = pumpNumber - 1;
+    float actualML = totalDispensedML[pumpIndex];
+    totalActualML += actualML;
+    totalRequestedML += quantityML;
+    cumulativeML += actualML;  // Update cumulative progress
     
     delay(500);  // Small delay between pumps
   }
+  
+  // Publish single completion message for entire recipe
+  unsigned long totalDuration = millis() - totalStartTime;
+  publishDispenseComplete(0, recipeName, totalActualML, totalRequestedML, totalDuration);
   
   Serial.println("\n✓ Dispense complete!\n");
   currentRecipeName = "";
@@ -446,9 +487,9 @@ void handleEmergencyStop(JsonDocument& doc) {
   Serial.printf("║ ⚠ EMERGENCY STOP: %s\n", reason.c_str());
   Serial.println("╚════════════════════════════════════════╝");
   
-  // Turn off all pumps immediately
+  // Turn off all pumps immediately (Active LOW: HIGH = OFF)
   for (int i = 0; i < NUM_PUMPS; i++) {
-    digitalWrite(pumpPins[i], LOW);
+    digitalWrite(pumpPins[i], HIGH);
   }
   
   setStatusLED(255, 0, 0);  // Red = Emergency
@@ -463,10 +504,15 @@ void handleEmergencyStop(JsonDocument& doc) {
 // RUN PUMP WITH FLOW METER
 // ============================================
 
-void runPump(int pumpNumber, float volumeML, String ingredient) {
+void runPump(int pumpNumber, float volumeML, String ingredient, bool publishCompletion, 
+             float cumulativeML, float totalRecipeML, unsigned long recipeStartTime) {
   if (pumpNumber < 1 || pumpNumber > NUM_PUMPS) {
     return;
   }
+  
+  // Use recipe-level progress if totalRecipeML > 0 (multi-pump recipe)
+  bool useRecipeProgress = (totalRecipeML > 0.0);
+  unsigned long effectiveStartTime = useRecipeProgress ? recipeStartTime : millis();
   
   int pumpIndex = pumpNumber - 1;
   int relayPin = pumpPins[pumpIndex];
@@ -475,50 +521,153 @@ void runPump(int pumpNumber, float volumeML, String ingredient) {
   float targetML = volumeML * pumpCalibration[pumpIndex];
   float targetPulses = (targetML / 1000.0) * PULSES_PER_LITER;
   
+  #ifdef SIMULATE_FLOW_METERS
+  if (SIMULATE_FLOW_METERS) {
+    Serial.printf("[PUMP %d] 🔵 SIMULATION MODE - Target: %.1f ml\n", pumpNumber, targetML);
+  } else {
+    Serial.printf("[PUMP %d] Target: %.1f ml (%.0f pulses)\n", pumpNumber, targetML, targetPulses);
+  }
+  #else
   Serial.printf("[PUMP %d] Target: %.1f ml (%.0f pulses)\n", pumpNumber, targetML, targetPulses);
+  #endif
   
   // Reset flow meter
   resetFlowMeter(pumpIndex);
   
-  // Turn pump ON (relay HIGH)
-  digitalWrite(relayPin, HIGH);
+  // Turn pump ON (Active LOW: relay triggers on LOW)
+  digitalWrite(relayPin, LOW);
   unsigned long startTime = millis();
   unsigned long lastReport = startTime;
   
-  // Monitor flow until target reached or timeout
-  while (flowPulseCount[pumpIndex] < targetPulses) {
-    unsigned long now = millis();
+  #ifdef SIMULATE_FLOW_METERS
+  if (SIMULATE_FLOW_METERS) {
+    // SIMULATION MODE: Simulate realistic flow
+    unsigned long lastUpdate = startTime;
+    float simulatedML = 0.0;
     
-    // Timeout protection (60 seconds max)
-    if (now - startTime > PUMP_TIMEOUT) {
-      Serial.printf("[WARN] Pump %d timeout after %lu ms\n", pumpNumber, now - startTime);
-      publishError(pumpNumber, "PUMP_TIMEOUT", "Flow timeout - check pump/sensor", "warning");
-      break;
+    while (simulatedML < targetML) {
+      unsigned long now = millis();
+      
+      // Simulate flow accumulation
+      if (now - lastUpdate >= SIMULATION_UPDATE_MS) {
+        float deltaTime = (now - lastUpdate) / 1000.0;  // seconds
+        float deltaML = SIMULATED_FLOW_RATE * deltaTime;
+        simulatedML += deltaML;
+        
+        // Simulate pulse count for getFlowML()
+        flowPulseCount[pumpIndex] = (simulatedML / 1000.0) * PULSES_PER_LITER;
+        
+        lastUpdate = now;
+      }
+      
+      // Timeout protection (60 seconds max)
+      if (now - startTime > PUMP_TIMEOUT) {
+        Serial.printf("[WARN] Pump %d timeout after %lu ms\n", pumpNumber, now - startTime);
+        publishError(pumpNumber, "PUMP_TIMEOUT", "Flow timeout - check pump/sensor", "warning");
+        break;
+      }
+      
+      // Progress report every 500ms (for smooth progress bar with small volumes)
+      if (now - lastReport > 500) {
+        // Calculate progress values (recipe-level or pump-level)
+        float progressML, targetMLforStatus;
+        unsigned long elapsedMS;
+        
+        if (useRecipeProgress) {
+          // Recipe-level progress (cumulative across all pumps)
+          progressML = cumulativeML + simulatedML;
+          targetMLforStatus = totalRecipeML;
+          elapsedMS = now - effectiveStartTime;
+          Serial.printf("[RECIPE] 🔵 Progress: %.1f/%.1f ml (%.0f%%)\n", 
+                        progressML, targetMLforStatus, (progressML / targetMLforStatus) * 100.0);
+        } else {
+          // Single pump progress
+          progressML = simulatedML;
+          targetMLforStatus = targetML;
+          elapsedMS = now - startTime;
+          Serial.printf("[PUMP %d] 🔵 SIMULATED Progress: %.1f/%.1f ml (%.0f%%)\n", 
+                        pumpNumber, progressML, targetMLforStatus, (progressML / targetMLforStatus) * 100.0);
+        }
+        
+        // Publish status to MQTT for frontend progress bar
+        publishDispenseStatus(pumpNumber, "dispensing", progressML, targetMLforStatus, elapsedMS);
+        
+        lastReport = now;
+      }
+      
+      delay(10);
     }
-    
-    // Progress report every 2 seconds
-    if (now - lastReport > 2000) {
-      float currentML = getFlowML(pumpIndex);
-      Serial.printf("[PUMP %d] Progress: %.1f/%.1f ml (%.0f%%)\n", 
-                    pumpNumber, currentML, targetML, (currentML / targetML) * 100.0);
-      lastReport = now;
+  } else {
+  #endif
+    // REAL FLOW METER MODE
+    while (flowPulseCount[pumpIndex] < targetPulses) {
+      unsigned long now = millis();
+      
+      // Timeout protection (60 seconds max)
+      if (now - startTime > PUMP_TIMEOUT) {
+        Serial.printf("[WARN] Pump %d timeout after %lu ms\n", pumpNumber, now - startTime);
+        publishError(pumpNumber, "PUMP_TIMEOUT", "Flow timeout - check pump/sensor", "warning");
+        break;
+      }
+      
+      // Progress report every 500ms (for smooth progress bar with small volumes)
+      if (now - lastReport > 500) {
+        float currentML = getFlowML(pumpIndex);
+        
+        // Calculate progress values (recipe-level or pump-level)
+        float progressML, targetMLforStatus;
+        unsigned long elapsedMS;
+        
+        if (useRecipeProgress) {
+          // Recipe-level progress (cumulative across all pumps)
+          progressML = cumulativeML + currentML;
+          targetMLforStatus = totalRecipeML;
+          elapsedMS = now - effectiveStartTime;
+          Serial.printf("[RECIPE] Progress: %.1f/%.1f ml (%.0f%%)\n", 
+                        progressML, targetMLforStatus, (progressML / targetMLforStatus) * 100.0);
+        } else {
+          // Single pump progress
+          progressML = currentML;
+          targetMLforStatus = targetML;
+          elapsedMS = now - startTime;
+          Serial.printf("[PUMP %d] Progress: %.1f/%.1f ml (%.0f%%)\n", 
+                        pumpNumber, progressML, targetMLforStatus, (progressML / targetMLforStatus) * 100.0);
+        }
+        
+        // Publish status to MQTT for frontend progress bar
+        publishDispenseStatus(pumpNumber, "dispensing", progressML, targetMLforStatus, elapsedMS);
+        
+        lastReport = now;
+      }
+      
+      delay(10);  // Small delay to prevent busy-waiting
     }
-    
-    delay(10);  // Small delay to prevent busy-waiting
+  #ifdef SIMULATE_FLOW_METERS
   }
+  #endif
   
-  // Turn pump OFF
-  digitalWrite(relayPin, LOW);
+  // Turn pump OFF (Active LOW: HIGH = OFF)
+  digitalWrite(relayPin, HIGH);
   unsigned long duration = millis() - startTime;
   
   // Calculate actual dispensed volume
   float actualML = getFlowML(pumpIndex);
   totalDispensedML[pumpIndex] = actualML;
   
+  #ifdef SIMULATE_FLOW_METERS
+  if (SIMULATE_FLOW_METERS) {
+    Serial.printf("[PUMP %d] 🔵 SIMULATED Complete: %.1f ml in %lu ms\n", pumpNumber, actualML, duration);
+  } else {
+    Serial.printf("[PUMP %d] Complete: %.1f ml in %lu ms\n", pumpNumber, actualML, duration);
+  }
+  #else
   Serial.printf("[PUMP %d] Complete: %.1f ml in %lu ms\n", pumpNumber, actualML, duration);
+  #endif
   
-  // Publish completion to backend
-  publishDispenseComplete(pumpNumber, currentRecipeName, actualML, volumeML, duration);
+  // Publish completion to backend (only if requested)
+  if (publishCompletion) {
+    publishDispenseComplete(pumpNumber, currentRecipeName, actualML, volumeML, duration);
+  }
 }
 
 // ============================================
@@ -537,15 +686,15 @@ void flushPump(int pumpNumber, int durationMS) {
   
   resetFlowMeter(pumpIndex);
   
-  // Turn pump ON
-  digitalWrite(relayPin, HIGH);
+  // Turn pump ON (Active LOW: LOW = ON)
+  digitalWrite(relayPin, LOW);
   unsigned long startTime = millis();
   
   // Run for specified duration
   delay(durationMS);
   
-  // Turn pump OFF
-  digitalWrite(relayPin, LOW);
+  // Turn pump OFF (Active LOW: HIGH = OFF)
+  digitalWrite(relayPin, HIGH);
   unsigned long duration = millis() - startTime;
   
   float actualML = getFlowML(pumpIndex);
@@ -602,6 +751,34 @@ void publishHeartbeat() {
   
   if (DEBUG_MODE) {
     Serial.println("[HEARTBEAT] Published");
+  }
+}
+
+void publishDispenseStatus(int pumpNumber, String state, float progressML, float targetML, unsigned long elapsedMS) {
+  JsonDocument doc;
+  
+  doc["pump_id"] = pumpNumber;
+  doc["state"] = state;
+  doc["progress_ml"] = progressML;
+  doc["target_ml"] = targetML;
+  doc["elapsed_ms"] = elapsedMS;
+  
+  // Calculate flow rate (ml/s)
+  if (elapsedMS > 0) {
+    float flowRate = (progressML / elapsedMS) * 1000.0;
+    doc["flow_rate_ml_s"] = flowRate;
+  } else {
+    doc["flow_rate_ml_s"] = 0.0;
+  }
+  
+  char buffer[256];
+  serializeJson(doc, buffer);
+  
+  mqtt.publish("intellivend/status", buffer);
+  
+  if (DEBUG_MODE) {
+    Serial.printf("[MQTT] → intellivend/status (Pump %d: %.1f/%.1f ml)\n", 
+                  pumpNumber, progressML, targetML);
   }
 }
 

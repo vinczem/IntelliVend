@@ -79,24 +79,31 @@ A `config.h` fájlban ellenőrizd a pumpa relay és flow meter pineket:
 #define PUMP_1_PIN 2
 #define PUMP_2_PIN 4
 #define PUMP_3_PIN 5
-#define PUMP_4_PIN 18
-#define PUMP_5_PIN 19
-#define PUMP_6_PIN 21
-#define PUMP_7_PIN 22
-#define PUMP_8_PIN 23
+#define PUMP_4_PIN 6
+#define PUMP_5_PIN 7
+#define PUMP_6_PIN 15
+#define PUMP_7_PIN 16
+#define PUMP_8_PIN 17
 
 // YF-S201 áramlásmérő pinek
-#define FLOW_METER_1_PIN 14
-#define FLOW_METER_2_PIN 12
-#define FLOW_METER_3_PIN 13
-#define FLOW_METER_4_PIN 15
-#define FLOW_METER_5_PIN 16
-#define FLOW_METER_6_PIN 17
-#define FLOW_METER_7_PIN 33  // GPIO 25 nem létezik ESP32-S3-on!
-#define FLOW_METER_8_PIN 34  // GPIO 26 nem létezik ESP32-S3-on!
+#define FLOW_METER_1_PIN 8
+#define FLOW_METER_2_PIN 9
+#define FLOW_METER_3_PIN 10
+#define FLOW_METER_4_PIN 11
+#define FLOW_METER_5_PIN 12
+#define FLOW_METER_6_PIN 13
+#define FLOW_METER_7_PIN 14
+#define FLOW_METER_8_PIN 18
+
+// Status LED
+#define STATUS_LED_PIN 21
 ```
 
-**FONTOS:** ESP32-S3 **NEM rendelkezik GPIO 22-32** pinekkel (SPI Flash-nek fenntartva)! A fenti konfiguráció ESP32-S3-DEV-N16R8 boardra van optimalizálva.
+**⚠️ FONTOS:** ESP32-S3-DEV-N16R8 **CSAK az alábbi GPIO-kat** használja:
+- **1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21**
+- **35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 47, 48**
+- **GPIO 19-34 NEM LÉTEZIK** (SPI Flash-nek fenntartva)!
+
 
 ## Fordítás és feltöltés
 
@@ -274,8 +281,6 @@ Ha a pumpa túl sokat vagy túl keveset adagol:
 
 A legfrissebb firmware verzió:
 https://github.com/vinczem/IntelliVend
-
-PlatformIO verziót is használhatsz a `platformio.ini` fájllal.
 
 ## Licensz
 
